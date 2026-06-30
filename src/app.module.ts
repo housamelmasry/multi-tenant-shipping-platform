@@ -13,6 +13,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { I18nModule, AcceptLanguageResolver, QueryResolver } from 'nestjs-i18n';
+import { ReturnsModule } from './modules/returns/returns.module';
 import * as path from 'path';
 
 
@@ -65,6 +66,7 @@ import * as path from 'path';
     OrdersModule,
     TrackingModule,
     WebhooksModule,
+    ReturnsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard }, // على كل الـ routes

@@ -32,5 +32,5 @@ export const ReturnStatusMeta = {
     })[status],
 
   isFinal: (status: ReturnStatus): boolean =>
-    [ReturnStatus.RETURNED, ReturnStatus.CANCELLED].includes(status),
+    ([ReturnStatus.RETURNED, ReturnStatus.CANCELLED] as ReturnStatus[]).includes(status),
 };
