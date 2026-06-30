@@ -1,12 +1,15 @@
 // src/modules/tenants/tenants.service.ts
 import {
   Injectable,
+  Inject,
   ConflictException,
   NotFoundException,
   UnauthorizedException,
   BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '@database/database.service';
+import { REDIS_CLIENT } from '../../redis/redis.module';
+import { Redis } from 'ioredis';
 import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { QueryTenantDto } from './dto/query-tenant.dto';
@@ -17,7 +20,10 @@ import * as crypto from 'crypto';
 
 @Injectable()
 export class TenantsService {
-  constructor(private db: DatabaseService) {}
+  constructor(
+    private db: DatabaseService,
+    @Inject(REDIS_CLIENT) private redis: Redis,
+  ) {}
 
   // ─── Super Admin Only ────────────────────────────────
 
@@ -251,6 +257,46 @@ export class TenantsService {
     };
   }
 
+  async getApiUsage(tenantId: string) {
+    const today = new Date().toISOString().split('T')[0];
+    const key = `ratelimit:api:${tenantId}:${today}`;
+    const used = parseInt((await this.redis.get(key)) ?? '0');
+    const tenant = await this.db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { plan: true },
+    });
+
+    const PLAN_LIMITS: Record<string, number> = {
+      BASIC: 1000,
+      PRO: 10000,
+      ENTERPRISE: 100000,
+    };
+    const limit = PLAN_LIMITS[tenant?.plan ?? 'BASIC'] ?? 1000;
+
+    const last7Days = await Promise.all(
+      Array.from({ length: 7 }, async (_, i) => {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split('T')[0];
+        const dayKey = `ratelimit:api:${tenantId}:${dateStr}`;
+        const count = parseInt((await this.redis.get(dayKey)) ?? '0');
+        return { date: dateStr, requests: count };
+      }),
+    );
+
+    return {
+      today: {
+        used,
+        limit,
+        remaining: Math.max(0, limit - used),
+        percentage: Math.round((used / limit) * 100),
+      },
+      plan: tenant?.plan,
+      last7Days: last7Days.reverse(),
+      resetAt: this.getResetTime(),
+    };
+  }
+
   // ─── Private Helpers ─────────────────────────────────
 
   private async assertTenantExists(id: string) {
@@ -279,5 +325,12 @@ export class TenantsService {
 
   private generateApiSecret(): string {
     return `secret_${crypto.randomBytes(32).toString('hex')}`;
+  }
+
+  private getResetTime(): string {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+    return tomorrow.toISOString();
   }
 }

@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerStorageRedisService } from 'nestjs-throttler-storage-redis';
 import { DatabaseModule } from './database/database.module';
+import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
 import { UsersModule } from './modules/users/users.module';
@@ -58,6 +61,37 @@ import * as path from 'path';
     // Database
     DatabaseModule,
 
+    // Redis
+    RedisModule,
+
+    // Rate Limiting
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        storage: new ThrottlerStorageRedisService({
+          host: config.get('REDIS_HOST'),
+          port: config.get('REDIS_PORT'),
+        }),
+        throttlers: [
+          {
+            name: 'short',
+            ttl: 1000,
+            limit: 10,
+          },
+          {
+            name: 'medium',
+            ttl: 60000,
+            limit: 100,
+          },
+          {
+            name: 'long',
+            ttl: 86400000,
+            limit: 5000,
+          },
+        ],
+      }),
+    }),
+
     // Modules
     AuthModule,
     TenantsModule,
@@ -70,8 +104,9 @@ import * as path from 'path';
     NotificationsModule,
   ],
   providers: [
-    { provide: APP_GUARD, useClass: JwtAuthGuard }, // على كل الـ routes
-    { provide: APP_GUARD, useClass: RolesGuard }, // تحقق من الـ roles
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

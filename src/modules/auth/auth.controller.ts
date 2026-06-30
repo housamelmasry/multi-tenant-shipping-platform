@@ -5,6 +5,8 @@ import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
+import { AuthThrottle } from '@common/decorators/throttle.decorator';
+
 
 @Controller('auth')
 @UseGuards(JwtAuthGuard) // كل الـ routes محتاجة auth
@@ -13,6 +15,7 @@ export class AuthController {
 
   @Post('login')
   @Public() // ما عداها
+  @AuthThrottle() // حماية من brute force
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }

@@ -16,6 +16,7 @@ import { RegisterDeviceDto } from './dto/register-device.dto';
 import { QueryDriversDto } from './dto/query-drivers.dto';
 import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
+import { LocationUpdateThrottle } from '@common/decorators/throttle.decorator';
 import { UserRole } from '@common/enums';
 
 @Controller('drivers')
@@ -74,6 +75,7 @@ export class DriversController {
 
   @Patch('me/location')
   @Roles(UserRole.TENANT_STAFF)
+  @LocationUpdateThrottle()
   updateLocation(
     @GetCurrentUser('driverId') driverId: string,
     @Body() dto: UpdateLocationDto,

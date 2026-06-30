@@ -87,4 +87,10 @@ export class TenantsController {
   getMyStats(@GetCurrentUser('tenantId') tenantId: string) {
     return this.tenantsService.getMyStats(tenantId);
   }
+
+  @Get('me/api-usage')
+  @Roles(UserRole.TENANT_ADMIN)
+  getApiUsage(@GetCurrentUser('tenantId') tenantId: string) {
+    return this.tenantsService.getApiUsage(tenantId);
+  }
 }

@@ -24,6 +24,7 @@ import { QueryOrdersDto } from './dto/query-orders.dto';
 import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
+import { OtpThrottle, Throttle } from '@common/decorators/throttle.decorator';
 import { UserRole } from '@common/enums';
 
 @Controller('orders')
@@ -99,6 +100,7 @@ export class OrdersController {
 
   @Post(':id/otp/send')
   @Roles(UserRole.TENANT_STAFF)
+  @OtpThrottle()
   sendOtp(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
@@ -109,6 +111,7 @@ export class OrdersController {
 
   @Post(':id/otp/verify')
   @Roles(UserRole.TENANT_STAFF)
+  @OtpThrottle()
   @UseInterceptors(FileInterceptor('photo'))
   verifyOtp(
     @Param('id') id: string,
@@ -154,6 +157,11 @@ export class OrdersController {
 
   @Get('track/:trackingCode')
   @Public()
+  @Throttle({
+    short: { ttl: 1000, limit: 5 },
+    medium: { ttl: 60000, limit: 30 },
+    long: { ttl: 86400000, limit: 500 },
+  })
   track(@Param('trackingCode') trackingCode: string) {
     return this.ordersService.trackByCode(trackingCode);
   }
