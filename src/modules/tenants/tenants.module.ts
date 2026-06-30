@@ -1,9 +1,11 @@
+// src/modules/tenants/tenants.module.ts
 import { Module } from '@nestjs/common';
-import { TenantsService } from './tenants.service';
 import { TenantsController } from './tenants.controller';
+import { TenantsService } from './tenants.service';
 
 @Module({
+  controllers: [TenantsController],
   providers: [TenantsService],
-  controllers: [TenantsController]
+  exports: [TenantsService],
 })
 export class TenantsModule {}

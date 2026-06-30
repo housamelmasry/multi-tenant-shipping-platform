@@ -8,6 +8,9 @@ import { DriversModule } from './modules/drivers/drivers.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { TrackingModule } from './modules/tracking/tracking.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
+import { RolesGuard } from '@common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -28,6 +31,10 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
     OrdersModule,
     TrackingModule,
     WebhooksModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard }, // على كل الـ routes
+    { provide: APP_GUARD, useClass: RolesGuard }, // تحقق من الـ roles
   ],
 })
 export class AppModule {}

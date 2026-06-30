@@ -1,4 +1,262 @@
-import { Injectable } from '@nestjs/common';
+// src/modules/tenants/tenants.service.ts
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
+import { DatabaseService } from '@database/database.service';
+import { CreateTenantDto } from './dto/create-tenant.dto';
+import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { QueryTenantDto } from './dto/query-tenant.dto';
+import { RegenerateApiKeyDto } from './dto/regenerate-api-key.dto';
+import { UserRole } from '@common/enums';
+import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 
 @Injectable()
-export class TenantsService {}
+export class TenantsService {
+  constructor(private db: DatabaseService) {}
+
+  // ─── Super Admin Only ────────────────────────────────
+
+  async create(dto: CreateTenantDto) {
+    // 1. التحقق من uniqueness
+    await this.assertSlugUnique(dto.slug);
+    await this.assertAdminEmailUnique(dto.adminEmail);
+
+    // 2. توليد API credentials
+    const apiKey = this.generateApiKey();
+    const apiSecret = this.generateApiSecret();
+
+    // 3. hash الباسورد
+    const hashedPassword = await bcrypt.hash(dto.adminPassword, 12);
+
+    // 4. إنشاء الـ tenant + admin في transaction
+    const tenant = await this.db.$transaction(async (tx) => {
+      const newTenant = await tx.tenant.create({
+        data: {
+          name: dto.name,
+          slug: dto.slug,
+          plan: dto.plan,
+          apiKey,
+          apiSecret,
+        },
+      });
+
+      await tx.user.create({
+        data: {
+          tenantId: newTenant.id,
+          name: dto.adminName,
+          email: dto.adminEmail,
+          password: hashedPassword,
+          role: UserRole.TENANT_ADMIN,
+        },
+      });
+
+      return newTenant;
+    });
+
+    return {
+      ...tenant,
+      // نرجع الـ apiKey مرة واحدة بس عند الإنشاء
+      apiKey,
+      apiSecret,
+    };
+  }
+
+  async findAll(query: QueryTenantDto) {
+    const { search, plan, isActive, page, limit } = query;
+    const skip = (page - 1) * limit;
+
+    const where = {
+      ...(search && {
+        OR: [{ name: { contains: search } }, { slug: { contains: search } }],
+      }),
+      ...(plan && { plan }),
+      ...(isActive !== undefined && { isActive }),
+    };
+
+    const [tenants, total] = await Promise.all([
+      this.db.tenant.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          plan: true,
+          isActive: true,
+          createdAt: true,
+          _count: {
+            select: {
+              orders: true,
+              drivers: true,
+              users: true,
+            },
+          },
+        },
+      }),
+      this.db.tenant.count({ where }),
+    ]);
+
+    return {
+      data: tenants,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findOne(id: string) {
+    const tenant = await this.db.tenant.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            orders: true,
+            drivers: true,
+            users: true,
+          },
+        },
+      },
+    });
+
+    if (!tenant) {
+      throw new NotFoundException('الشركة غير موجودة');
+    }
+
+    // مش نرجع الـ apiSecret أبداً
+    const { apiSecret, ...safeTenant } = tenant;
+    return safeTenant;
+  }
+
+  async update(id: string, dto: UpdateTenantDto) {
+    await this.assertTenantExists(id);
+
+    if (dto.slug) {
+      await this.assertSlugUnique(dto.slug, id);
+    }
+
+    return this.db.tenant.update({
+      where: { id },
+      data: dto,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+        isActive: true,
+        updatedAt: true,
+      },
+    });
+  }
+
+  async toggleStatus(id: string) {
+    const tenant = await this.assertTenantExists(id);
+
+    return this.db.tenant.update({
+      where: { id },
+      data: { isActive: !tenant.isActive },
+      select: { id: true, isActive: true },
+    });
+  }
+
+  async regenerateApiKey(id: string, dto: RegenerateApiKeyDto, userId: string) {
+    // التحقق من الباسورد قبل إعادة التوليد
+    const user = await this.db.user.findUnique({ where: { id: userId } });
+    const isValid = await bcrypt.compare(dto.password, user.password);
+
+    if (!isValid) {
+      throw new UnauthorizedException('كلمة المرور غير صحيحة');
+    }
+
+    const apiKey = this.generateApiKey();
+    const apiSecret = this.generateApiSecret();
+
+    await this.db.tenant.update({
+      where: { id },
+      data: { apiKey, apiSecret },
+    });
+
+    // نرجعهم مرة واحدة بس
+    return { apiKey, apiSecret };
+  }
+
+  // ─── Tenant Admin ────────────────────────────────────
+
+  async getMyTenant(tenantId: string) {
+    return this.findOne(tenantId);
+  }
+
+  async getMyStats(tenantId: string) {
+    const [
+      totalOrders,
+      pendingOrders,
+      deliveredOrders,
+      failedOrders,
+      totalDrivers,
+      activeDrivers,
+    ] = await Promise.all([
+      this.db.order.count({ where: { tenantId } }),
+      this.db.order.count({ where: { tenantId, status: 'pending' } }),
+      this.db.order.count({ where: { tenantId, status: 'delivered' } }),
+      this.db.order.count({ where: { tenantId, status: 'failed' } }),
+      this.db.driver.count({ where: { tenantId } }),
+      this.db.driver.count({ where: { tenantId, status: 'available' } }),
+    ]);
+
+    const deliveryRate =
+      totalOrders > 0 ? Math.round((deliveredOrders / totalOrders) * 100) : 0;
+
+    return {
+      orders: {
+        total: totalOrders,
+        pending: pendingOrders,
+        delivered: deliveredOrders,
+        failed: failedOrders,
+        deliveryRate: `${deliveryRate}%`,
+      },
+      drivers: {
+        total: totalDrivers,
+        active: activeDrivers,
+      },
+    };
+  }
+
+  // ─── Private Helpers ─────────────────────────────────
+
+  private async assertTenantExists(id: string) {
+    const tenant = await this.db.tenant.findUnique({ where: { id } });
+    if (!tenant) throw new NotFoundException('الشركة غير موجودة');
+    return tenant;
+  }
+
+  private async assertSlugUnique(slug: string, excludeId?: string) {
+    const existing = await this.db.tenant.findUnique({ where: { slug } });
+    if (existing && existing.id !== excludeId) {
+      throw new ConflictException('هذا الـ slug مستخدم بالفعل');
+    }
+  }
+
+  private async assertAdminEmailUnique(email: string) {
+    const existing = await this.db.user.findUnique({ where: { email } });
+    if (existing) {
+      throw new ConflictException('هذا الإيميل مستخدم بالفعل');
+    }
+  }
+
+  private generateApiKey(): string {
+    return `sk_${crypto.randomBytes(24).toString('hex')}`;
+  }
+
+  private generateApiSecret(): string {
+    return `secret_${crypto.randomBytes(32).toString('hex')}`;
+  }
+}
