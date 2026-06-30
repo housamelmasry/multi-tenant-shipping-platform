@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  users     User[]
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Driver {
+  id          String   @id @default(uuid())
+  name        String
+  phone       String
+  vehicleType String
+  status      String   @default("AVAILABLE")
+  latitude    Float?
+  longitude   Float?
+  userId      String?  @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  orders      Order[]
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  pickupAddress   String
+  deliveryAddress String
+  customerName    String?
+  customerPhone   String?
+  status          String   @default("PENDING")
+  otp             String?
+  notes           String?
+  driverId        String?
+  driver          Driver?  @relation(fields: [driverId], references: [id])
+  tenantId        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Webhook {
+  id        String   @id @default(uuid())
+  url       String
+  events    String[]
+  secret    String?
+  tenantId  String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
