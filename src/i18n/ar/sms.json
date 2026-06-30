@@ -1,10 +1,14 @@
+
 {
   "otp": {
-    "message": "رمز التحقق الخاص بطلبك {trackingCode} هو: {code}\nصالح لمدة 10 دقائق"
+    "delivery": "مرحباً {recipientName}،\nرمز تأكيد استلام طلبك ({trackingCode}) هو:\n{code}\nصالح لمدة 10 دقائق\n{senderName}",
+    "return":   "رمز تأكيد استلام المرتجع ({orderId}) هو:\n{code}\nصالح لمدة 10 دقائق"
   },
   "order": {
-    "assigned": "تم تعيين سائق لطلبك {trackingCode}، سيصلك قريباً",
-    "delivered": "تم تسليم طلبك {trackingCode} بنجاح، شكراً لثقتك بنا",
-    "failed": "لم نتمكن من تسليم طلبك {trackingCode}، سيتم التواصل معك"
+    "created":    "مرحباً {recipientName}،\nتم استلام طلبك بنجاح\nرقم التتبع: {trackingCode}\nتابع طلبك: {trackingUrl}",
+    "assigned":   "مرحباً {recipientName}،\nتم تعيين مندوب لتوصيل طلبك {trackingCode}\nالمندوب: {driverName}\nللتواصل: {driverPhone}",
+    "in_transit": "مرحباً {recipientName}،\nمندوبنا في طريقه إليك بطلبك {trackingCode}\nتتبع موقعه: {trackingUrl}",
+    "delivered":  "مرحباً {recipientName}،\nتم تسليم طلبك {trackingCode} بنجاح ✅\nشكراً لثقتك بنا\n{senderName}",
+    "failed":     "مرحباً {recipientName}،\nلم نتمكن من تسليم طلبك {trackingCode}\nسيتواصل معك فريقنا قريباً\n{senderName}"
   }
 }

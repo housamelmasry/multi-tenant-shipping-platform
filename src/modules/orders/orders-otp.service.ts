@@ -4,23 +4,24 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { I18nService } from 'nestjs-i18n';
 import { DatabaseService } from '@database/database.service';
 import { OrderStatus, DriverStatus } from '@common/enums';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
+import { SmsService } from '@modules/sms/sms.service';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class OrdersOtpService {
   constructor(
     private db: DatabaseService,
-    private i18n: I18nService,
     private webhooksService: WebhooksService,
+    private smsService: SmsService,
   ) {}
 
   async generateAndSend(orderId: string, tenantId: string, driverId: string) {
     const order = await this.db.order.findFirst({
       where: { id: orderId, tenantId },
+      include: { tenant: true },
     });
 
     if (!order) throw new NotFoundException('الطلب غير موجود');
@@ -33,17 +34,23 @@ export class OrdersOtpService {
       throw new BadRequestException('الطلب ليس في حالة التوصيل');
     }
 
-    // توليد OTP
     const otpCode = this.generateOtp();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 دقائق
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await this.db.order.update({
       where: { id: orderId },
       data: { otpCode, otpExpiresAt },
     });
 
-    // إرسال SMS للعميل
-    await this.sendSms(order.recipientPhone, otpCode, order);
+    await this.smsService.sendDeliveryOtp({
+      phone: order.recipientPhone,
+      recipientName: order.recipientName,
+      trackingCode: order.trackingCode,
+      code: otpCode,
+      senderName: order.tenant?.name ?? '',
+      tenantId,
+      orderId,
+    });
 
     return { message: 'تم إرسال رمز التحقق للعميل' };
   }
@@ -128,18 +135,5 @@ export class OrdersOtpService {
 
   private generateOtp(): string {
     return crypto.randomInt(100000, 999999).toString();
-  }
-
-  private async sendSms(phone: string, code: string, order: any, lang = 'ar') {
-    const message = this.i18n.translate('sms.otp.message', {
-      lang,
-      args: {
-        trackingCode: order.trackingCode,
-        code,
-      },
-    });
-
-    console.log(`📱 SMS to ${phone}: ${message}`);
-    // await smsProvider.send(phone, message);
   }
 }

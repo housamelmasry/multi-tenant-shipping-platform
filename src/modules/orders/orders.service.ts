@@ -15,6 +15,7 @@ import { OrdersOtpService } from './orders-otp.service';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
 import { NotificationsService } from '@modules/notifications/notifications.service';
+import { SmsService } from '@modules/sms/sms.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -25,6 +26,7 @@ export class OrdersService {
     private webhooksService: WebhooksService,
     private trackingGateway: TrackingGateway,
     private notificationsService: NotificationsService,
+    private smsService: SmsService,
   ) {}
 
   // ─── Create ──────────────────────────────────────────
@@ -209,6 +211,18 @@ export class OrdersService {
       updatedOrder,
     );
 
+    // إشعار SMS للعميل
+    await this.smsService.sendOrderNotification({
+      phone: order.recipientPhone,
+      template: 'order.assigned',
+      recipientName: order.recipientName,
+      trackingCode: order.trackingCode,
+      driverName: driver.name,
+      driverPhone: driver.phone,
+      tenantId,
+      orderId,
+    });
+
     return updatedOrder;
   }
 
@@ -284,6 +298,19 @@ export class OrdersService {
       status: updatedOrder.status,
       driverId: updatedOrder.driverId ?? undefined,
     });
+
+    const notifiableStatuses = ['in_transit', 'delivered', 'failed'];
+    const statusLower = dto.status.toLowerCase();
+    if (notifiableStatuses.includes(statusLower)) {
+      await this.smsService.sendOrderNotification({
+        phone: order.recipientPhone,
+        template: `order.${statusLower}`,
+        recipientName: order.recipientName,
+        trackingCode: order.trackingCode,
+        tenantId,
+        orderId,
+      });
+    }
 
     return updatedOrder;
   }

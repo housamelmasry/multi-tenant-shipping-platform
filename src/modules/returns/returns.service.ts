@@ -12,6 +12,7 @@ import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
 import { QueryReturnsDto } from './dto/query-returns.dto';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
+import { SmsService } from '@modules/sms/sms.service';
 import {
   ReturnStatus,
   ReturnStatusMeta,
@@ -26,6 +27,7 @@ export class ReturnsService {
     private db: DatabaseService,
     private webhooksService: WebhooksService,
     private notificationsService: NotificationsService,
+    private smsService: SmsService,
   ) {}
 
   // ─── Create Return Request ────────────────────────────
@@ -332,11 +334,12 @@ export class ReturnsService {
     });
 
     // إرسال OTP لموظف المستودع
-    await this.sendWarehouseOtp(
-      returnRequest.warehousePhone,
-      otpCode,
-      returnRequest.orderId,
-    );
+    await this.smsService.sendReturnOtp({
+      phone: returnRequest.warehousePhone,
+      orderId: returnRequest.orderId,
+      code: otpCode,
+      tenantId,
+    });
 
     return { message: 'تم إرسال رمز التحقق لموظف المستودع' };
   }
