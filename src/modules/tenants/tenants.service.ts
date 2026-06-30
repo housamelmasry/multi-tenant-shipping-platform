@@ -195,6 +195,23 @@ export class TenantsService {
 
   // ─── Tenant Admin ────────────────────────────────────
 
+  async updateSettings(tenantId: string, settings: Record<string, any>) {
+    const tenant = await this.db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    });
+    if (!tenant) throw new NotFoundException('الشركة غير موجودة');
+
+    const currentSettings = (tenant.settings as object) ?? {};
+    const newSettings = { ...currentSettings, ...settings };
+
+    return this.db.tenant.update({
+      where: { id: tenantId },
+      data: { settings: newSettings },
+      select: { id: true, settings: true },
+    });
+  }
+
   async getMyTenant(tenantId: string) {
     return this.findOne(tenantId);
   }

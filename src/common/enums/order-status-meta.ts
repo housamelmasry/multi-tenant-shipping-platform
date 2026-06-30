@@ -7,6 +7,7 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.IN_TRANSIT]: [OrderStatus.DELIVERED, OrderStatus.FAILED],
   [OrderStatus.DELIVERED]: [],
   [OrderStatus.FAILED]: [],
+  [OrderStatus.RETURNED]: [],
   [OrderStatus.CANCELLED]: [],
 };
 
@@ -17,12 +18,14 @@ const LABELS: Record<OrderStatus, string> = {
   [OrderStatus.IN_TRANSIT]: 'قيد التوصيل',
   [OrderStatus.DELIVERED]: 'تم التوصيل',
   [OrderStatus.FAILED]: 'فشل التوصيل',
+  [OrderStatus.RETURNED]: 'تم الإرجاع',
   [OrderStatus.CANCELLED]: 'ملغي',
 };
 
 const FINAL_STATUSES: OrderStatus[] = [
   OrderStatus.DELIVERED,
   OrderStatus.FAILED,
+  OrderStatus.RETURNED,
   OrderStatus.CANCELLED,
 ];
 

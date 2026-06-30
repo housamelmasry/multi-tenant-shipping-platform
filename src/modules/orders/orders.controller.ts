@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { OrdersService } from './orders.service';
 import { OrdersOtpService } from './orders-otp.service';
+import { OrdersAssignmentService } from './orders-assignment.service';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { AssignDriverDto } from './dto/assign-driver.dto';
@@ -30,6 +31,7 @@ export class OrdersController {
   constructor(
     private ordersService: OrdersService,
     private otpService: OrdersOtpService,
+    private assignmentService: OrdersAssignmentService,
   ) {}
 
   // ─── Tenant Routes ────────────────────────────────────
@@ -118,6 +120,34 @@ export class OrdersController {
     // هنا هترفع الصورة لـ S3 وتاخد الـ URL
     const photoUrl = photo ? `uploads/${photo.filename}` : undefined;
     return this.otpService.verify(id, tenantId, driverId, dto.code, photoUrl);
+  }
+
+  // ─── Public Route (Tracking) ──────────────────────────
+
+  // ─── Auto Assignment ──────────────────────────────────
+
+  @Post(':id/auto-assign')
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
+  autoAssign(
+    @Param('id') id: string,
+    @GetCurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.assignmentService.autoAssign(id, tenantId);
+  }
+
+  @Post('bulk-auto-assign')
+  @Roles(UserRole.TENANT_ADMIN)
+  bulkAutoAssign(@GetCurrentUser('tenantId') tenantId: string) {
+    return this.assignmentService.bulkAutoAssign(tenantId);
+  }
+
+  @Get(':id/assignment-preview')
+  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
+  previewAssignment(
+    @Param('id') id: string,
+    @GetCurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.assignmentService.previewAssignment(id, tenantId);
   }
 
   // ─── Public Route (Tracking) ──────────────────────────

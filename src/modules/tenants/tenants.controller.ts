@@ -14,6 +14,7 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { QueryTenantDto } from './dto/query-tenant.dto';
 import { RegenerateApiKeyDto } from './dto/regenerate-api-key.dto';
+import { UpdateAssignmentConfigDto } from './dto/update-assignment-config.dto';
 import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { UserRole } from '@common/enums';
@@ -70,6 +71,15 @@ export class TenantsController {
   @Roles(UserRole.TENANT_ADMIN)
   getMyTenant(@GetCurrentUser('tenantId') tenantId: string) {
     return this.tenantsService.getMyTenant(tenantId);
+  }
+
+  @Patch('me/assignment-config')
+  @Roles(UserRole.TENANT_ADMIN)
+  updateAssignmentConfig(
+    @GetCurrentUser('tenantId') tenantId: string,
+    @Body() dto: UpdateAssignmentConfigDto,
+  ) {
+    return this.tenantsService.updateSettings(tenantId, dto);
   }
 
   @Get('me/stats')

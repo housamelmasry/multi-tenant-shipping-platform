@@ -5,5 +5,6 @@ export enum OrderStatus {
   IN_TRANSIT = 'IN_TRANSIT',
   DELIVERED = 'DELIVERED',
   FAILED = 'FAILED',
+  RETURNED = 'RETURNED',
   CANCELLED = 'CANCELLED',
 }

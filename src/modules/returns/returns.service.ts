@@ -111,7 +111,7 @@ export class ReturnsService {
   // ─── Read ─────────────────────────────────────────────
 
   async findAll(tenantId: string, query: QueryReturnsDto) {
-    const { status, reason, search, page, limit } = query;
+    const { status, reason, search, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -416,7 +416,7 @@ export class ReturnsService {
     );
 
     const cancellableStatuses = [ReturnStatus.PENDING, ReturnStatus.ASSIGNED];
-    if (!cancellableStatuses.includes(returnRequest.status as ReturnStatus)) {
+    if (!(cancellableStatuses as ReturnStatus[]).includes(returnRequest.status as ReturnStatus)) {
       throw new BadRequestException('لا يمكن إلغاء هذا الطلب في حالته الحالية');
     }
 

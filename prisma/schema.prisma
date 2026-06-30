@@ -7,24 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum ReturnReason {
-  CUSTOMER_REFUSED
-  WRONG_ITEM
-  DAMAGED_ITEM
-  CUSTOMER_REQUESTED
-  MAX_ATTEMPTS
-  OTHER
-}
-
-enum ReturnStatus {
-  PENDING
-  ASSIGNED
-  PICKED_UP
-  IN_TRANSIT
-  RETURNED
-  CANCELLED
-}
-
 model Tenant {
   id        String   @id @default(uuid())
   name      String
@@ -170,7 +152,7 @@ model ReturnRequest {
   tenantId        String   @map("tenant_id")
   driverId        String?  @map("driver_id")
 
-  reason          ReturnReason
+  reason          String
   notes           String?
   requestedBy     String   @map("requested_by")
 
@@ -180,7 +162,7 @@ model ReturnRequest {
   warehouseLat    Decimal? @map("warehouse_lat") @db.Decimal(10, 8)
   warehouseLng    Decimal? @map("warehouse_lng") @db.Decimal(11, 8)
 
-  status          ReturnStatus @default(PENDING)
+  status          String   @default("pending")
 
   productPhoto    String?  @map("product_photo")
   otpCode         String?  @map("otp_code")
