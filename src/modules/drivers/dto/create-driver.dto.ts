@@ -1,5 +1,5 @@
 import { IsString, IsEnum, IsOptional } from 'class-validator';
-import { VehicleType } from '../../../common/enums';
+import { VehicleType } from '@common/enums';
 
 export class CreateDriverDto {
   @IsString()

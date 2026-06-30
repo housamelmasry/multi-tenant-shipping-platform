@@ -1,3 +1,4 @@
+// common/interceptors/response.interceptor.ts
 import {
   Injectable,
   NestInterceptor,
@@ -7,26 +8,22 @@ import {
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
-export interface ApiResponse<T> {
-  statusCode: number;
-  message: string;
-  data: T;
-}
-
 @Injectable()
-export class ResponseInterceptor<T>
-  implements NestInterceptor<T, ApiResponse<T>>
-{
-  intercept(
-    context: ExecutionContext,
-    next: CallHandler,
-  ): Observable<ApiResponse<T>> {
+export class ResponseInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     return next.handle().pipe(
       map((data) => ({
-        statusCode: context.switchToHttp().getResponse().statusCode,
-        message: 'Success',
+        success: true,
         data,
+        timestamp: new Date().toISOString(),
       })),
     );
   }
 }
+
+// كل response هيبقى شكله:
+// {
+//   success: true,
+//   data: { ... },
+//   timestamp: "2024-..."
+// }
