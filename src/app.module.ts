@@ -14,8 +14,8 @@ import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { I18nModule, AcceptLanguageResolver, QueryResolver } from 'nestjs-i18n';
 import { ReturnsModule } from './modules/returns/returns.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import * as path from 'path';
-
 
 @Module({
   imports: [
@@ -67,6 +67,7 @@ import * as path from 'path';
     TrackingModule,
     WebhooksModule,
     ReturnsModule,
+    NotificationsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard }, // على كل الـ routes

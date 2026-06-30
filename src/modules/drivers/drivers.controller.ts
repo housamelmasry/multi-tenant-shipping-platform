@@ -12,6 +12,7 @@ import { DriversService } from './drivers.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { RegisterDeviceDto } from './dto/register-device.dto';
 import { QueryDriversDto } from './dto/query-drivers.dto';
 import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
@@ -96,5 +97,14 @@ export class DriversController {
   @Roles(UserRole.TENANT_STAFF)
   getMyStats(@GetCurrentUser('driverId') driverId: string) {
     return this.driversService.getMyStats(driverId);
+  }
+
+  @Patch('me/device')
+  @Roles(UserRole.TENANT_STAFF)
+  registerDevice(
+    @GetCurrentUser('driverId') driverId: string,
+    @Body() dto: RegisterDeviceDto,
+  ) {
+    return this.driversService.registerDevice(driverId, dto);
   }
 }

@@ -23,6 +23,7 @@ model Tenant {
   orders          Order[]
   webhooks        Webhook[]
   returnRequests  ReturnRequest[]
+  notifications   Notification[]
 }
 
 model User {
@@ -54,12 +55,15 @@ model Driver {
   currentLat    Float?
   currentLng    Float?
   lastLocationAt DateTime?
+  fcmToken      String?   @map("fcm_token")
+  fcmTokenAt    DateTime? @map("fcm_token_at")
   tenantId      String?
   tenant        Tenant?   @relation(fields: [tenantId], references: [id])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   orders          Order[]
   returnRequests  ReturnRequest[]
+  notifications   Notification[]
   user            User?
 }
 
@@ -197,4 +201,25 @@ model ReturnStatusHistory {
 
   @@index([returnRequestId])
   @@map("return_status_history")
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  tenantId  String             @map("tenant_id")
+  driverId  String             @map("driver_id")
+  type      String
+  title     String
+  body      String
+  data      Json?
+  status    String   @default("PENDING")
+  sentAt    DateTime?          @map("sent_at")
+  readAt    DateTime?          @map("read_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  driver Driver @relation(fields: [driverId], references: [id])
+
+  @@index([driverId, status])
+  @@index([tenantId])
+  @@map("notifications")
 }

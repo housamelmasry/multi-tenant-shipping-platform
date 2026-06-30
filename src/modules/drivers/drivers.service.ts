@@ -258,6 +258,14 @@ export class DriversService {
 
   // ─── Private ──────────────────────────────────────────
 
+  async registerDevice(driverId: string, dto: { fcmToken: string }) {
+    return this.db.driver.update({
+      where: { id: driverId },
+      data: { fcmToken: dto.fcmToken, fcmTokenAt: new Date() },
+      select: { id: true, fcmToken: true, fcmTokenAt: true },
+    });
+  }
+
   private async assertDriverBelongsToTenant(id: string, tenantId: string) {
     const driver = await this.db.driver.findFirst({
       where: { id, tenantId },
