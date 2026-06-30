@@ -1,40 +1,101 @@
-// src/common/swagger/api-responses.decorator.ts
-import { applyDecorators } from '@nestjs/common';
+import { applyDecorators, Type } from '@nestjs/common';
 import {
-  ApiResponse,
-  ApiUnauthorizedResponse,
-  ApiForbiddenResponse,
-  ApiBadRequestResponse,
-  ApiTooManyRequestsResponse,
+  ApiOkResponse, ApiCreatedResponse,
+  ApiBadRequestResponse, ApiUnauthorizedResponse,
+  ApiForbiddenResponse, ApiNotFoundResponse,
+  ApiConflictResponse, ApiTooManyRequestsResponse,
+  ApiInternalServerErrorResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
 
-// Response موحد للنجاح
-export const ApiSuccessResponse = (description: string, type?: any) =>
-  applyDecorators(
-    ApiResponse({
-      status: 200,
+export function ApiSuccessResponse(
+  description: string,
+  dataType?: Type<unknown>,
+) {
+  const schema: any = {
+    type: 'object',
+    properties: {
+      success: { type: 'boolean', example: true },
+      message: { type: 'string', example: description },
+      timestamp: { type: 'string', format: 'date-time' },
+    },
+  };
+
+  if (dataType) {
+    schema.properties.data = { $ref: getSchemaPath(dataType) };
+  }
+
+  return applyDecorators(
+    ApiOkResponse({
       description,
+      schema,
+    }),
+  );
+}
+
+export function ApiCreatedResponseDoc(
+  description: string,
+  dataType?: Type<unknown>,
+) {
+  const schema: any = {
+    type: 'object',
+    properties: {
+      success: { type: 'boolean', example: true },
+      message: { type: 'string', example: description },
+      timestamp: { type: 'string', format: 'date-time' },
+    },
+  };
+
+  if (dataType) {
+    schema.properties.data = { $ref: getSchemaPath(dataType) };
+  }
+
+  return applyDecorators(
+    ApiCreatedResponse({
+      description,
+      schema,
+    }),
+  );
+}
+
+export function ApiCommonResponses() {
+  return applyDecorators(
+    ApiBadRequestResponse({
+      description: 'خطأ في البيانات المرسلة',
       schema: {
+        type: 'object',
         properties: {
-          success: { type: 'boolean', example: true },
-          data: type
-            ? { $ref: `#/components/schemas/${type.name}` }
-            : { type: 'object' },
-          timestamp: { type: 'string', example: '2024-01-01T00:00:00.000Z' },
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'رمز التحقق غير صحيح' },
+          statusCode: { type: 'number', example: 400 },
         },
       },
     }),
+    ApiUnauthorizedResponse({
+      description: 'غير مصرح',
+      schema: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean', example: false },
+          message: { type: 'string', example: 'يرجى تسجيل الدخول' },
+          statusCode: { type: 'number', example: 401 },
+        },
+      },
+    }),
+    ApiForbiddenResponse({
+      description: 'صلاحية غير كافية',
+    }),
+    ApiNotFoundResponse({
+      description: 'الموارد غير موجود',
+    }),
+    ApiConflictResponse({
+      description: 'تعارض في البيانات',
+    }),
+    ApiTooManyRequestsResponse({
+      description: 'تجاوزت حد الطلبات المسموح',
+    }),
+    ApiInternalServerErrorResponse({
+      description: 'خطأ داخلي في الخادم',
+    }),
   );
-
-// Responses الشائعة
-export const ApiCommonResponses = () =>
-  applyDecorators(
-    ApiUnauthorizedResponse({ description: 'يرجى تسجيل الدخول أولاً' }),
-    ApiForbiddenResponse({ description: 'ليس لديك صلاحية' }),
-    ApiBadRequestResponse({ description: 'بيانات غير صحيحة' }),
-    ApiTooManyRequestsResponse({ description: 'تجاوزت الحد المسموح به' }),
-  );
-
-// Auth decorators
-export const ApiBearerAuth = () =>
-  applyDecorators(ApiResponse({ status: 401, description: 'JWT غير صالح' }));
+}

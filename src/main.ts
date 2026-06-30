@@ -78,6 +78,7 @@ function setupSwagger(app: any) {
     .setVersion('1.0.0')
     .setContact('Support', 'https://yourapp.com', 'support@yourapp.com')
     .setLicense('Private', '')
+    .setExternalDoc('Postman Collection', 'https://yourapp.com/postman.json')
     .addServer('http://localhost:3000', 'Development')
     .addServer('https://api.yourapp.com', 'Production')
     .addBearerAuth(
