@@ -7,6 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ReturnReason {
+  DAMAGED
+  WRONG_ITEM
+  NOT_AS_DESCRIBED
+  CUSTOMER_REJECTED
+  DELIVERY_FAILED
+  OTHER
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_TRANSIT
+  RETURNED
+  CANCELLED
+}
+
 model Tenant {
   id        String   @id @default(uuid())
   name      String
@@ -20,8 +38,9 @@ model Tenant {
   updatedAt DateTime @updatedAt
   users     User[]
   drivers   Driver[]
-  orders    Order[]
-  webhooks  Webhook[]
+  orders          Order[]
+  webhooks        Webhook[]
+  returnRequests  ReturnRequest[]
 }
 
 model User {
@@ -57,8 +76,9 @@ model Driver {
   tenant        Tenant?   @relation(fields: [tenantId], references: [id])
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  orders        Order[]
-  user          User?
+  orders          Order[]
+  returnRequests  ReturnRequest[]
+  user            User?
 }
 
 model Order {
@@ -95,6 +115,7 @@ model Order {
   updatedAt       DateTime @updatedAt
   statusHistory   OrderStatusHistory[]
   webhookLogs     WebhookLog[]
+  returnRequests  ReturnRequest[]
 }
 
 model OrderStatusHistory {
@@ -141,4 +162,57 @@ model WebhookLog {
 
   @@index([webhookId])
   @@index([status])
+}
+
+model ReturnRequest {
+  id              String   @id @default(uuid())
+  orderId         String   @unique @map("order_id")
+  tenantId        String   @map("tenant_id")
+  driverId        String?  @map("driver_id")
+
+  reason          ReturnReason
+  notes           String?
+  requestedBy     String   @map("requested_by")
+
+  warehouseName   String   @map("warehouse_name")
+  warehousePhone  String   @map("warehouse_phone")
+  warehouseAddress String  @map("warehouse_address")
+  warehouseLat    Decimal? @map("warehouse_lat") @db.Decimal(10, 8)
+  warehouseLng    Decimal? @map("warehouse_lng") @db.Decimal(11, 8)
+
+  status          ReturnStatus @default(PENDING)
+
+  productPhoto    String?  @map("product_photo")
+  otpCode         String?  @map("otp_code")
+  otpExpiresAt    DateTime? @map("otp_expires_at")
+  otpVerifiedAt   DateTime? @map("otp_verified_at")
+  returnedAt      DateTime? @map("returned_at")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  order          Order   @relation(fields: [orderId], references: [id])
+  tenant         Tenant  @relation(fields: [tenantId], references: [id])
+  driver         Driver? @relation(fields: [driverId], references: [id])
+
+  statusHistory  ReturnStatusHistory[]
+
+  @@index([tenantId, status])
+  @@map("return_requests")
+}
+
+model ReturnStatusHistory {
+  id              String   @id @default(uuid())
+  returnRequestId String   @map("return_request_id")
+  fromStatus      String?  @map("from_status")
+  toStatus        String
+  note            String?
+  changedByType   String   @map("changed_by_type")
+  changedById     String?  @map("changed_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  returnRequest ReturnRequest @relation(fields: [returnRequestId], references: [id])
+
+  @@index([returnRequestId])
+  @@map("return_status_history")
 }
