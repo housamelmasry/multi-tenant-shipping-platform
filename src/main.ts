@@ -23,7 +23,10 @@ async function bootstrap() {
 
   // Global filters & interceptors
   app.useGlobalFilters(new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalInterceptors(
+    new ResponseInterceptor(),
+    new PrivacyInterceptor(),
+  );
 
   // CORS
   app.enableCors({
@@ -116,7 +119,5 @@ function setupSwagger(app: any) {
       .swagger-ui .topbar-wrapper img { content: url('https://yourapp.com/logo.png'); }
     `,
   });
-
-  await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
