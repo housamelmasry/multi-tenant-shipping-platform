@@ -1,13 +1,10 @@
-import { IsOptional, IsString, IsEnum, IsInt, Min, Max } from 'class-validator';
+// src/modules/notifications/dto/query-notifications.dto.ts
+import { IsOptional, IsEnum, IsInt, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryNotificationsDto {
   @IsOptional()
-  @IsString()
-  type?: string;
-
-  @IsOptional()
-  @IsString()
+  @IsEnum(['pending', 'sent', 'failed', 'read'])
   status?: string;
 
   @IsOptional()
@@ -20,6 +17,6 @@ export class QueryNotificationsDto {
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(50)
   limit?: number = 20;
 }

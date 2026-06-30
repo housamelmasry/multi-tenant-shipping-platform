@@ -1,15 +1,16 @@
+// src/modules/notifications/notifications.controller.ts
 import {
   Controller,
   Get,
   Post,
   Patch,
-  Delete,
   Body,
   Param,
   Query,
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
-import { CreateNotificationDto } from './dto/create-notification.dto';
+import { UpdateFcmTokenDto } from './dto/update-fcm-token.dto';
+import { SendAnnouncementDto } from './dto/send-announcement.dto';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
 import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
@@ -17,52 +18,51 @@ import { UserRole } from '@common/enums';
 
 @Controller('notifications')
 export class NotificationsController {
-  constructor(
-    private readonly notificationsService: NotificationsService,
-  ) {}
+  constructor(private notificationsService: NotificationsService) {}
 
-  @Post()
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  create(
-    @GetCurrentUser('tenantId') tenantId: string,
-    @Body() dto: CreateNotificationDto,
+  // ─── Driver Routes ────────────────────────────────────
+
+  @Post('fcm-token')
+  @Roles(UserRole.TENANT_STAFF)
+  updateFcmToken(
+    @GetCurrentUser('driverId') driverId: string,
+    @Body() dto: UpdateFcmTokenDto,
   ) {
-    return this.notificationsService.create(tenantId, dto);
+    return this.notificationsService.updateFcmToken(driverId, dto.fcmToken);
   }
 
-  @Get()
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  findAll(
-    @GetCurrentUser('tenantId') tenantId: string,
+  @Get('my')
+  @Roles(UserRole.TENANT_STAFF)
+  getMyNotifications(
+    @GetCurrentUser('driverId') driverId: string,
     @Query() query: QueryNotificationsDto,
   ) {
-    return this.notificationsService.findAll(tenantId, query);
-  }
-
-  @Get(':id')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  findOne(
-    @Param('id') id: string,
-    @GetCurrentUser('tenantId') tenantId: string,
-  ) {
-    return this.notificationsService.findOne(id, tenantId);
+    return this.notificationsService.getMyNotifications(driverId, query);
   }
 
   @Patch(':id/read')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
+  @Roles(UserRole.TENANT_STAFF)
   markAsRead(
     @Param('id') id: string,
-    @GetCurrentUser('tenantId') tenantId: string,
+    @GetCurrentUser('driverId') driverId: string,
   ) {
-    return this.notificationsService.markAsRead(id, tenantId);
+    return this.notificationsService.markAsRead(id, driverId);
   }
 
-  @Delete(':id')
+  @Patch('mark-all-read')
+  @Roles(UserRole.TENANT_STAFF)
+  markAllAsRead(@GetCurrentUser('driverId') driverId: string) {
+    return this.notificationsService.markAllAsRead(driverId);
+  }
+
+  // ─── Admin Routes ─────────────────────────────────────
+
+  @Post('announcement')
   @Roles(UserRole.TENANT_ADMIN)
-  remove(
-    @Param('id') id: string,
+  sendAnnouncement(
     @GetCurrentUser('tenantId') tenantId: string,
+    @Body() dto: SendAnnouncementDto,
   ) {
-    return this.notificationsService.remove(id, tenantId);
+    return this.notificationsService.sendAnnouncement(tenantId, dto);
   }
 }

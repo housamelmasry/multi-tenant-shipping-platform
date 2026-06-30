@@ -11,6 +11,7 @@ import { AssignReturnDriverDto } from './dto/assign-return-driver.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
 import { QueryReturnsDto } from './dto/query-returns.dto';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
+import { NotificationsService } from '@modules/notifications/notifications.service';
 import {
   ReturnStatus,
   ReturnStatusMeta,
@@ -24,6 +25,7 @@ export class ReturnsService {
   constructor(
     private db: DatabaseService,
     private webhooksService: WebhooksService,
+    private notificationsService: NotificationsService,
   ) {}
 
   // ─── Create Return Request ────────────────────────────
@@ -241,6 +243,12 @@ export class ReturnsService {
       changedByType: 'user',
       changedById: userId,
       note: `تم تعيين السائق ${driver.name}`,
+    });
+
+    await this.notificationsService.notifyNewReturn(dto.driverId, tenantId, {
+      id: returnRequest.id,
+      orderId: returnRequest.orderId,
+      warehouseAddress: returnRequest.warehouseAddress,
     });
 
     return updatedReturn;

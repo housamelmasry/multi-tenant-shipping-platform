@@ -7,6 +7,7 @@ import { DatabaseService } from '@database/database.service';
 import { OrderStatus, DriverStatus } from '@common/enums';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
+import { NotificationsService } from '@modules/notifications/notifications.service';
 
 @Injectable()
 export class OrdersAssignmentService {
@@ -14,6 +15,7 @@ export class OrdersAssignmentService {
     private db: DatabaseService,
     private webhooksService: WebhooksService,
     private trackingGateway: TrackingGateway,
+    private notificationsService: NotificationsService,
   ) {}
 
   async autoAssign(orderId: string, tenantId: string) {
@@ -66,6 +68,12 @@ export class OrdersAssignmentService {
       trackingCode: updatedOrder.trackingCode,
       status: updatedOrder.status,
       driverId: driver.id,
+    });
+
+    await this.notificationsService.notifyNewOrder(driver.id, tenantId, {
+      id: updatedOrder.id,
+      trackingCode: updatedOrder.trackingCode,
+      recipientAddress: updatedOrder.recipientAddress,
     });
 
     return {

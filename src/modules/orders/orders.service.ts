@@ -14,6 +14,7 @@ import { OrderStatus, OrderStatusMeta, DriverStatus } from '@common/enums';
 import { OrdersOtpService } from './orders-otp.service';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
+import { NotificationsService } from '@modules/notifications/notifications.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -23,6 +24,7 @@ export class OrdersService {
     private otpService: OrdersOtpService,
     private webhooksService: WebhooksService,
     private trackingGateway: TrackingGateway,
+    private notificationsService: NotificationsService,
   ) {}
 
   // ─── Create ──────────────────────────────────────────
@@ -326,6 +328,14 @@ export class OrdersService {
       'order.cancelled',
       updatedOrder,
     );
+
+    if (order.driverId) {
+      await this.notificationsService.notifyOrderCancelled(
+        order.driverId,
+        tenantId,
+        { id: order.id, trackingCode: updatedOrder.trackingCode },
+      );
+    }
 
     return updatedOrder;
   }

@@ -6,3 +6,4 @@ export * from './plan.enum';
 export * from './return-reason.enum';
 export * from './return-status.enum';
 export * from './order-status-meta';
+export * from './notification-type.enum';
