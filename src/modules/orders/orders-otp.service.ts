@@ -8,6 +8,7 @@ import { DatabaseService } from '@database/database.service';
 import { OrderStatus, DriverStatus } from '@common/enums';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { SmsService } from '@modules/sms/sms.service';
+import { StorageService } from '@modules/storage/storage.service';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class OrdersOtpService {
     private db: DatabaseService,
     private webhooksService: WebhooksService,
     private smsService: SmsService,
+    private storageService: StorageService,
   ) {}
 
   async generateAndSend(orderId: string, tenantId: string, driverId: string) {
@@ -60,7 +62,7 @@ export class OrdersOtpService {
     tenantId: string,
     driverId: string,
     code: string,
-    deliveryPhoto?: string,
+    photoFile?: Express.Multer.File,
   ) {
     const order = await this.db.order.findFirst({
       where: { id: orderId, tenantId },
@@ -87,6 +89,25 @@ export class OrdersOtpService {
       throw new BadRequestException('رمز التحقق غير صحيح');
     }
 
+    // رفع الصورة لو موجودة
+    let deliveryPhotoUrl: string | undefined;
+    let deliveryPhotoKey: string | undefined;
+
+    if (photoFile) {
+      const uploaded = await this.storageService.uploadPhoto(
+        photoFile,
+        'delivery-photos',
+        tenantId,
+        {
+          orderId,
+          driverId,
+          type: 'delivery-proof',
+        },
+      );
+      deliveryPhotoUrl = uploaded.url;
+      deliveryPhotoKey = uploaded.key;
+    }
+
     // ✅ OTP صحيح → إتمام التسليم
     const updatedOrder = await this.db.$transaction(async (tx) => {
       const updated = await tx.order.update({
@@ -97,7 +118,8 @@ export class OrdersOtpService {
           otpExpiresAt: null,
           otpVerifiedAt: new Date(),
           deliveredAt: new Date(),
-          deliveryPhoto,
+          deliveryPhoto: deliveryPhotoUrl,
+          deliveryPhotoKey,
         },
       });
 

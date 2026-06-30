@@ -25,7 +25,8 @@
     "admin:create": "ts-node src/cli/create-admin.command.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1076.0",
+    "@aws-sdk/client-s3": "^3.1077.0",
+    "@aws-sdk/s3-request-presigner": "^3.1077.0",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bull": "^11.0.4",
     "@nestjs/common": "^11.0.1",
@@ -55,6 +56,7 @@
     "rate-limit-redis": "^5.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "sharp": "^0.35.2",
     "socket.io": "^4.8.3"
   },
   "devDependencies": {

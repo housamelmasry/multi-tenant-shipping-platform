@@ -24,6 +24,7 @@ model Tenant {
   webhooks        Webhook[]
   returnRequests  ReturnRequest[]
   notifications   Notification[]
+  smsLogs         SmsLog[]
 }
 
 model User {
@@ -90,6 +91,7 @@ model Order {
   otpExpiresAt    DateTime?
   otpVerifiedAt   DateTime?
   deliveryPhoto   String?
+  deliveryPhotoKey String?
   deliveredAt     DateTime?
   pickedUpAt      DateTime?
   failedReason    String?
@@ -169,6 +171,7 @@ model ReturnRequest {
   status          String   @default("pending")
 
   productPhoto    String?  @map("product_photo")
+  productPhotoKey String?  @map("product_photo_key")
   otpCode         String?  @map("otp_code")
   otpExpiresAt    DateTime? @map("otp_expires_at")
   otpVerifiedAt   DateTime? @map("otp_verified_at")

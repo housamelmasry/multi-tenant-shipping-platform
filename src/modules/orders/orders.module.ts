@@ -7,9 +7,10 @@ import { OrdersAssignmentService } from './orders-assignment.service';
 import { WebhooksModule } from '@modules/webhooks/webhooks.module';
 import { TrackingModule } from '@modules/tracking/tracking.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { SmsModule } from '@modules/sms/sms.module';
 
 @Module({
-  imports: [WebhooksModule, TrackingModule, NotificationsModule],
+  imports: [WebhooksModule, TrackingModule, NotificationsModule, SmsModule],
   controllers: [OrdersController],
   providers: [OrdersService, OrdersOtpService, OrdersAssignmentService],
   exports: [OrdersService],

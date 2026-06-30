@@ -493,8 +493,4 @@ export class ReturnsService {
     });
   }
 
-  private async sendWarehouseOtp(phone: string, code: string, orderId: string) {
-    console.log(`📱 SMS to warehouse ${phone}: رمز استلام المرتجع هو ${code}`);
-    // await smsService.send(phone, `رمز استلام المرتجع للطلب ${orderId} هو: ${code}`);
-  }
 }

@@ -26,6 +26,7 @@ import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
 import { OtpThrottle, Throttle } from '@common/decorators/throttle.decorator';
 import { UserRole } from '@common/enums';
+import { multerConfig } from '../../common/config/multer.config';
 
 @Controller('orders')
 export class OrdersController {
@@ -111,8 +112,8 @@ export class OrdersController {
 
   @Post(':id/otp/verify')
   @Roles(UserRole.TENANT_STAFF)
+  @UseInterceptors(FileInterceptor('photo', multerConfig))
   @OtpThrottle()
-  @UseInterceptors(FileInterceptor('photo'))
   verifyOtp(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
@@ -120,9 +121,7 @@ export class OrdersController {
     @Body() dto: VerifyOtpDto,
     @UploadedFile() photo?: Express.Multer.File,
   ) {
-    // هنا هترفع الصورة لـ S3 وتاخد الـ URL
-    const photoUrl = photo ? `uploads/${photo.filename}` : undefined;
-    return this.otpService.verify(id, tenantId, driverId, dto.code, photoUrl);
+    return this.otpService.verify(id, tenantId, driverId, dto.code, photo);
   }
 
   // ─── Public Route (Tracking) ──────────────────────────
