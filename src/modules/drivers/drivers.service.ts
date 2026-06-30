@@ -10,11 +10,15 @@ import { UpdateDriverDto } from './dto/update-driver.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 import { QueryDriversDto } from './dto/query-drivers.dto';
 import { DriverStatus, UserRole } from '@common/enums';
+import { TrackingGateway } from '@modules/tracking/tracking.gateway';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class DriversService {
-  constructor(private db: DatabaseService) {}
+  constructor(
+    private db: DatabaseService,
+    private trackingGateway: TrackingGateway,
+  ) {}
 
   // ─── CRUD ─────────────────────────────────────────────
 
@@ -159,20 +163,25 @@ export class DriversService {
   // ─── Location ─────────────────────────────────────────
 
   async updateLocation(driverId: string, dto: UpdateLocationDto) {
-    return this.db.driver.update({
+    const driver = await this.db.driver.update({
       where: { id: driverId },
       data: {
         currentLat: dto.lat,
         currentLng: dto.lng,
         lastLocationAt: new Date(),
       },
-      select: {
-        id: true,
-        currentLat: true,
-        currentLng: true,
-        lastLocationAt: true,
-      },
     });
+
+    this.trackingGateway.emitDriverLocationUpdate(driver.tenantId!, {
+      id: driver.id,
+      name: driver.name,
+      status: driver.status,
+      currentLat: dto.lat,
+      currentLng: dto.lng,
+      lastLocationAt: new Date(),
+    });
+
+    return driver;
   }
 
   async updateOnlineStatus(driverId: string, isOnline: boolean) {

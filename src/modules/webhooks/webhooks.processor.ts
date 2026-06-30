@@ -5,7 +5,7 @@ import {
   OnQueueFailed,
   OnQueueCompleted,
 } from '@nestjs/bull';
-import { Job } from 'bull';
+import type { Job } from 'bull';
 import { HttpService } from '@nestjs/axios';
 import { DatabaseService } from '@database/database.service';
 import { WebhookJobData } from './types/webhook-job.type';
@@ -58,7 +58,7 @@ export class WebhooksProcessor {
       const responseBody = JSON.stringify(
         error.response?.data ?? error.message,
       ).slice(0, 1000);
-      const isLastAttempt = job.attemptsMade + 1 >= job.opts.attempts;
+      const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 5);
 
       // حساب وقت المحاولة القادمة
       const nextRetryAt = isLastAttempt

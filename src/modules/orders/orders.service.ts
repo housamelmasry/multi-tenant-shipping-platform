@@ -13,6 +13,7 @@ import { AssignDriverDto } from './dto/assign-driver.dto';
 import { OrderStatus, OrderStatusMeta, DriverStatus } from '@common/enums';
 import { OrdersOtpService } from './orders-otp.service';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
+import { TrackingGateway } from '@modules/tracking/tracking.gateway';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class OrdersService {
     private db: DatabaseService,
     private otpService: OrdersOtpService,
     private webhooksService: WebhooksService,
+    private trackingGateway: TrackingGateway,
   ) {}
 
   // ─── Create ──────────────────────────────────────────
@@ -270,9 +272,16 @@ export class OrdersService {
 
     await this.webhooksService.dispatch(
       tenantId,
-      `order.${dto.status}`,
+      `order.${dto.status.toLowerCase()}` as any,
       updatedOrder,
     );
+
+    this.trackingGateway.emitOrderStatusUpdate(tenantId, {
+      id: updatedOrder.id,
+      trackingCode: updatedOrder.trackingCode,
+      status: updatedOrder.status,
+      driverId: updatedOrder.driverId ?? undefined,
+    });
 
     return updatedOrder;
   }

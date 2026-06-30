@@ -94,6 +94,7 @@ model Order {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   statusHistory   OrderStatusHistory[]
+  webhookLogs     WebhookLog[]
 }
 
 model OrderStatusHistory {
@@ -111,13 +112,33 @@ model OrderStatusHistory {
 }
 
 model Webhook {
-  id        String   @id @default(uuid())
+  id        String        @id @default(uuid())
   url       String
   events    String[]
   secret    String?
-  active    Boolean  @default(true)
+  isActive  Boolean       @default(true)
   tenantId  String?
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  tenant    Tenant?       @relation(fields: [tenantId], references: [id])
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  logs      WebhookLog[]
+}
+
+model WebhookLog {
+  id             String   @id @default(uuid())
+  webhookId      String
+  webhook        Webhook  @relation(fields: [webhookId], references: [id])
+  orderId        String?
+  order          Order?   @relation(fields: [orderId], references: [id])
+  event          String
+  payload        Json
+  status         String   @default("pending")
+  attempts       Int      @default(0)
+  responseStatus Int?
+  responseBody   String?
+  nextRetryAt    DateTime?
+  createdAt      DateTime @default(now())
+
+  @@index([webhookId])
+  @@index([status])
 }

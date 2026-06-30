@@ -143,7 +143,7 @@ export class WebhooksService {
       webhookId: log.webhookId,
       tenantId,
       url: log.webhook.url,
-      secret: log.webhook.secret,
+      secret: log.webhook.secret ?? '',
       event: log.event as any,
       payload: log.payload as any,
       attempt: 0,
@@ -160,7 +160,7 @@ export class WebhooksService {
       where: {
         tenantId,
         isActive: true,
-        events: { array_contains: event }, // MySQL JSON contains
+        events: { has: event }, // تحقق من وجود الحدث في المصفوفة
       },
     });
 
