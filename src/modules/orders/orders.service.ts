@@ -67,7 +67,7 @@ export class OrdersService {
   // ─── Read ─────────────────────────────────────────────
 
   async findAll(tenantId: string, query: QueryOrdersDto) {
-    const { status, search, driverId, dateFrom, dateTo, page, limit } = query;
+    const { status, search, driverId, dateFrom, dateTo, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -319,6 +319,34 @@ export class OrdersService {
     );
 
     return updatedOrder;
+  }
+
+  // ─── Public Tracking ──────────────────────────────────
+
+  async trackByCode(trackingCode: string) {
+    const order = await this.db.order.findUnique({
+      where: { trackingCode },
+      select: {
+        id: true,
+        trackingCode: true,
+        status: true,
+        recipientName: true,
+        recipientAddress: true,
+        createdAt: true,
+        deliveredAt: true,
+        statusHistory: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            toStatus: true,
+            note: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    if (!order) throw new NotFoundException('رقم التتبع غير صحيح');
+    return order;
   }
 
   // ─── Private Helpers ──────────────────────────────────

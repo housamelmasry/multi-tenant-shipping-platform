@@ -1,0 +1,10 @@
+{
+  "otp": {
+    "message": "Your OTP for order {trackingCode} is: {code}\nValid for 10 minutes"
+  },
+  "order": {
+    "assigned": "A driver has been assigned to your order {trackingCode}",
+    "delivered": "Your order {trackingCode} has been delivered successfully",
+    "failed": "We couldn't deliver your order {trackingCode}, we'll contact you"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "otp": {
+    "message": "رمز التحقق الخاص بطلبك {trackingCode} هو: {code}\nصالح لمدة 10 دقائق"
+  },
+  "order": {
+    "assigned": "تم تعيين سائق لطلبك {trackingCode}، سيصلك قريباً",
+    "delivered": "تم تسليم طلبك {trackingCode} بنجاح، شكراً لثقتك بنا",
+    "failed": "لم نتمكن من تسليم طلبك {trackingCode}، سيتم التواصل معك"
+  }
+}

@@ -10,10 +10,18 @@ datasource db {
 model Tenant {
   id        String   @id @default(uuid())
   name      String
-  domain    String?  @unique
+  slug      String   @unique
+  plan      String   @default("basic")
+  apiKey    String   @unique
+  apiSecret String
+  isActive  Boolean  @default(true)
+  settings  Json     @default("{}")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   users     User[]
+  drivers   Driver[]
+  orders    Order[]
+  webhooks  Webhook[]
 }
 
 model User {
@@ -22,6 +30,7 @@ model User {
   password  String
   name      String
   role      String
+  isActive  Boolean  @default(true)
   tenantId  String?
   tenant    Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
@@ -34,9 +43,12 @@ model Driver {
   phone       String
   vehicleType String
   status      String   @default("AVAILABLE")
+  isActive    Boolean  @default(true)
   latitude    Float?
   longitude   Float?
   userId      String?  @unique
+  tenantId    String?
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   orders      Order[]
@@ -44,18 +56,51 @@ model Driver {
 
 model Order {
   id              String   @id @default(uuid())
-  pickupAddress   String
-  deliveryAddress String
-  customerName    String?
-  customerPhone   String?
+  trackingCode    String   @unique
+  externalRef     String?
   status          String   @default("PENDING")
-  otp             String?
+  senderName      String
+  senderPhone     String
+  senderAddress   String
+  senderLat       Float?
+  senderLng       Float?
+  recipientName   String
+  recipientPhone  String
+  recipientAddress String
+  recipientLat    Float?
+  recipientLng    Float?
+  description     String?
+  weight          Float?
+  codAmount       Float    @default(0)
   notes           String?
+  otpCode         String?
+  otpExpiresAt    DateTime?
+  otpVerifiedAt   DateTime?
+  deliveryPhoto   String?
+  deliveredAt     DateTime?
+  pickedUpAt      DateTime?
+  failedReason    String?
   driverId        String?
   driver          Driver?  @relation(fields: [driverId], references: [id])
   tenantId        String?
+  tenant          Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  statusHistory   OrderStatusHistory[]
+}
+
+model OrderStatusHistory {
+  id            String   @id @default(uuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id])
+  fromStatus    String?
+  toStatus      String
+  changedByType String
+  changedById   String?
+  note          String?
+  createdAt     DateTime @default(now())
+
+  @@index([orderId])
 }
 
 model Webhook {
@@ -63,8 +108,9 @@ model Webhook {
   url       String
   events    String[]
   secret    String?
-  tenantId  String?
   active    Boolean  @default(true)
+  tenantId  String?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

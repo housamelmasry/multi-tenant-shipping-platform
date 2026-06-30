@@ -11,6 +11,9 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { RolesGuard } from '@common/guards/roles.guard';
+import { I18nModule, AcceptLanguageResolver, QueryResolver } from 'nestjs-i18n';
+import * as path from 'path';
+
 
 @Module({
   imports: [
@@ -18,6 +21,18 @@ import { RolesGuard } from '@common/guards/roles.guard';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    I18nModule.forRoot({
+      fallbackLanguage: 'ar', // العربية افتراضي
+      loaderOptions: {
+        path: path.join(__dirname, '/i18n/'),
+        watch: true,
+      },
+      resolvers: [
+        // بيحدد اللغة من الـ header أو الـ query
+        { use: QueryResolver, options: ['lang'] },
+        AcceptLanguageResolver,
+      ],
     }),
 
     // Database

@@ -67,7 +67,7 @@ export class TenantsService {
   }
 
   async findAll(query: QueryTenantDto) {
-    const { search, plan, isActive, page, limit } = query;
+    const { search, plan, isActive, page = 1, limit = 20 } = query;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -171,6 +171,10 @@ export class TenantsService {
   async regenerateApiKey(id: string, dto: RegenerateApiKeyDto, userId: string) {
     // التحقق من الباسورد قبل إعادة التوليد
     const user = await this.db.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new UnauthorizedException('المستخدم غير موجود');
+    }
+
     const isValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isValid) {
