@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { I18nService } from 'nestjs-i18n';
 import { DatabaseService } from '@database/database.service';
 import { OrderStatus, DriverStatus } from '@common/enums';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
@@ -13,6 +14,7 @@ import * as crypto from 'crypto';
 export class OrdersOtpService {
   constructor(
     private db: DatabaseService,
+    private i18n: I18nService,
     private webhooksService: WebhooksService,
   ) {}
 
@@ -41,7 +43,7 @@ export class OrdersOtpService {
     });
 
     // إرسال SMS للعميل
-    await this.sendSms(order.recipientPhone, otpCode);
+    await this.sendSms(order.recipientPhone, otpCode, order);
 
     return { message: 'تم إرسال رمز التحقق للعميل' };
   }
@@ -128,12 +130,16 @@ export class OrdersOtpService {
     return crypto.randomInt(100000, 999999).toString();
   }
 
-  private async sendSms(phone: string, code: string) {
-    // هنا هتتكامل مع Unifonic أو أي SMS provider
-    // مؤقتاً بـ log
-    console.log(`📱 SMS to ${phone}: رمز التحقق هو ${code}`);
+  private async sendSms(phone: string, code: string, order: any, lang = 'ar') {
+    const message = this.i18n.translate('sms.otp.message', {
+      lang,
+      args: {
+        trackingCode: order.trackingCode,
+        code,
+      },
+    });
 
-    // لما تجهز الـ SMS provider:
-    // await this.smsService.send(phone, `رمز التحقق الخاص بطلبك هو: ${code}`);
+    console.log(`📱 SMS to ${phone}: ${message}`);
+    // await smsProvider.send(phone, message);
   }
 }

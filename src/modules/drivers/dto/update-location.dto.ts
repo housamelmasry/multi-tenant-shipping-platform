@@ -1,9 +1,10 @@
-import { IsNumber } from 'class-validator';
+// src/modules/drivers/dto/update-location.dto.ts
+import { IsLatitude, IsLongitude } from 'class-validator';
 
 export class UpdateLocationDto {
-  @IsNumber()
-  latitude: number;
+  @IsLatitude()
+  lat: number;
 
-  @IsNumber()
-  longitude: number;
+  @IsLongitude()
+  lng: number;
 }
