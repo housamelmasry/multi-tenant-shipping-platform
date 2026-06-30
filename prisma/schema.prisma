@@ -25,6 +25,10 @@ model Tenant {
   returnRequests  ReturnRequest[]
   notifications   Notification[]
   smsLogs         SmsLog[]
+  consentLogs     ConsentLog[]
+  dataRequests    DataRequest[]
+  breachLogs      BreachLog[]
+  dataAccessLogs  DataAccessLog[]
 }
 
 model User {
@@ -65,6 +69,7 @@ model Driver {
   orders          Order[]
   returnRequests  ReturnRequest[]
   notifications   Notification[]
+  dataRequests    DataRequest[]
   user            User?
 }
 
@@ -248,4 +253,102 @@ model Notification {
   @@index([driverId, status])
   @@index([tenantId])
   @@map("notifications")
+}
+
+// ─── Privacy / Compliance ─────────────────────────────────
+
+model ConsentLog {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  phone       String
+  purpose     String
+  version     String   @default("1.0")
+  ipAddress   String?  @map("ip_address")
+  consentedAt DateTime @default(now()) @map("consented_at")
+  revokedAt   DateTime? @map("revoked_at")
+  isActive    Boolean  @default(true) @map("is_active")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, phone])
+  @@index([entityType, entityId])
+  @@map("consent_logs")
+}
+
+model DataRequest {
+  id            String            @id @default(uuid())
+  tenantId      String            @map("tenant_id")
+  type          DataRequestType
+  status        DataRequestStatus @default(PENDING)
+  requesterType String            @map("requester_type")
+  phone         String?
+  driverId      String?           @map("driver_id")
+  reason        String?
+  notes         String?
+  handledBy     String?           @map("handled_by")
+  handledAt     DateTime?         @map("handled_at")
+  dueAt         DateTime          @map("due_at")
+  reportUrl     String?           @map("report_url")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  tenant Tenant  @relation(fields: [tenantId], references: [id])
+  driver Driver? @relation(fields: [driverId], references: [id])
+
+  @@index([tenantId, status])
+  @@index([dueAt])
+  @@map("data_requests")
+}
+
+model BreachLog {
+  id               String   @id @default(uuid())
+  tenantId         String?  @map("tenant_id")
+  severity         String
+  description      String   @db.Text
+  affectedEntities Int      @default(0) @map("affected_entities")
+  dataTypes        Json
+  detectedAt       DateTime @map("detected_at")
+  reportedAt       DateTime? @map("reported_at")
+  resolvedAt       DateTime? @map("resolved_at")
+  actions          Json?
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  @@map("breach_logs")
+}
+
+model DataAccessLog {
+  id         String   @id @default(uuid())
+  tenantId   String?  @map("tenant_id")
+  userId     String   @map("user_id")
+  action     String
+  dataType   String   @map("data_type")
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id")
+  ipAddress  String?  @map("ip_address")
+  userAgent  String?  @map("user_agent")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, createdAt])
+  @@index([userId])
+  @@map("data_access_logs")
+}
+
+enum DataRequestType {
+  ACCESS
+  RECTIFICATION
+  ERASURE
+  PORTABILITY
+  OBJECTION
+}
+
+enum DataRequestStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  REJECTED
 }

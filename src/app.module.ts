@@ -18,6 +18,7 @@ import { RolesGuard } from '@common/guards/roles.guard';
 import { I18nModule, AcceptLanguageResolver, QueryResolver } from 'nestjs-i18n';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { PdplModule } from './modules/pdpl/pdpl.module';
 import * as path from 'path';
 
 @Module({
@@ -102,6 +103,7 @@ import * as path from 'path';
     WebhooksModule,
     ReturnsModule,
     NotificationsModule,
+    PdplModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
