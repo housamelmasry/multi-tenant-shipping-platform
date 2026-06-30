@@ -1,135 +1,122 @@
 import {
   Controller, Get, Post, Patch,
-  Body, Param, Query,
+  Body, Param, Req,
 } from '@nestjs/common';
 import { PdplService } from './pdpl.service';
-import {
-  CreateConsentDto, QueryConsentDto,
-  CreateDataRequestDto, HandleDataRequestDto, QueryDataRequestDto,
-  CreateBreachDto, ResolveBreachDto, QueryBreachDto,
-  QueryAccessLogDto,
-} from './dto';
 import { Roles } from '@common/decorators/roles.decorator';
-import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
+import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { UserRole } from '@common/enums';
+import {
+  IsString, IsEnum, IsOptional, IsPhoneNumber,
+} from 'class-validator';
+
+class DataRequestDto {
+  @IsEnum(['ACCESS', 'RECTIFICATION', 'ERASURE', 'PORTABILITY'])
+  type: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+class EraseCustomerDto {
+  @IsString()
+  phone: string;
+}
 
 @Controller('pdpl')
 export class PdplController {
   constructor(private pdplService: PdplService) {}
 
-  // ─── Consent ────────────────────────────────────────────
+  // ─── Public — العميل النهائي ──────────────────────────
 
   @Post('consent')
-  @Roles(UserRole.TENANT_ADMIN)
-  recordConsent(@Body() dto: CreateConsentDto) {
-    return this.pdplService.recordConsent(dto);
-  }
-
-  @Get('consent')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  listConsent(
-    @GetCurrentUser('tenantId') tenantId: string,
-    @Query() query: QueryConsentDto,
+  @Public()
+  recordConsent(
+    @Body() body: { phone: string; purpose: string; tenantId: string },
+    @Req() req: any,
   ) {
-    return this.pdplService.listConsent(tenantId, query);
+    return this.pdplService.recordConsent({
+      tenantId: body.tenantId,
+      phone: body.phone,
+      entityType: 'customer',
+      purpose: body.purpose,
+      ipAddress: req.ip,
+    });
   }
 
-  @Get('consent/:id')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  getConsent(
-    @Param('id') id: string,
-    @GetCurrentUser('tenantId') tenantId: string,
-  ) {
-    return this.pdplService.getConsent(id, tenantId);
-  }
-
-  @Patch('consent/:id/revoke')
-  @Roles(UserRole.TENANT_ADMIN)
+  @Post('consent/revoke')
+  @Public()
   revokeConsent(
+    @Body() body: { phone: string; purpose: string; tenantId: string },
+  ) {
+    return this.pdplService.revokeConsent(
+      body.tenantId,
+      body.phone,
+      body.purpose,
+    );
+  }
+
+  // ─── Tenant Admin ─────────────────────────────────────
+
+  @Post('data-requests')
+  @Roles(UserRole.TENANT_ADMIN)
+  createDataRequest(
+    @GetCurrentUser('tenantId') tenantId: string,
+    @Body() dto: DataRequestDto,
+  ) {
+    return this.pdplService.createDataRequest({
+      tenantId,
+      type: dto.type,
+      requesterType: 'customer',
+      phone: dto.phone,
+      reason: dto.reason,
+    });
+  }
+
+  @Get('data-requests')
+  @Roles(UserRole.TENANT_ADMIN)
+  getDataRequests(@GetCurrentUser('tenantId') tenantId: string) {
+    return this.pdplService.getDataRequests(tenantId);
+  }
+
+  @Post('data-requests/:id/report')
+  @Roles(UserRole.TENANT_ADMIN)
+  generateReport(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
   ) {
-    return this.pdplService.revokeConsent(id, tenantId);
+    return this.pdplService.generateDataReport(id, tenantId);
   }
 
-  // ─── Data Requests ─────────────────────────────────────
-
-  @Post('requests')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  createDataRequest(@Body() dto: CreateDataRequestDto) {
-    return this.pdplService.createDataRequest(dto);
-  }
-
-  @Get('requests')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  listDataRequests(
+  @Post('erase/customer')
+  @Roles(UserRole.TENANT_ADMIN)
+  eraseCustomer(
     @GetCurrentUser('tenantId') tenantId: string,
-    @Query() query: QueryDataRequestDto,
+    @Body() dto: EraseCustomerDto,
   ) {
-    return this.pdplService.listDataRequests(tenantId, query);
+    return this.pdplService.anonymizeCustomerData(tenantId, dto.phone);
   }
 
-  @Get('requests/:id')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  getDataRequest(
-    @Param('id') id: string,
+  @Post('erase/driver/:driverId')
+  @Roles(UserRole.TENANT_ADMIN)
+  eraseDriver(
+    @Param('driverId') driverId: string,
     @GetCurrentUser('tenantId') tenantId: string,
   ) {
-    return this.pdplService.getDataRequest(id, tenantId);
+    return this.pdplService.deleteDriverData(tenantId, driverId);
   }
 
-  @Patch('requests/:id/handle')
-  @Roles(UserRole.TENANT_ADMIN)
-  handleDataRequest(
-    @Param('id') id: string,
-    @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') userId: string,
-    @Body() dto: HandleDataRequestDto,
-  ) {
-    return this.pdplService.handleDataRequest(id, tenantId, userId, dto);
-  }
+  // ─── Super Admin ──────────────────────────────────────
 
-  // ─── Breaches ──────────────────────────────────────────
-
-  @Post('breaches')
-  @Roles(UserRole.TENANT_ADMIN)
-  createBreach(@Body() dto: CreateBreachDto) {
-    return this.pdplService.createBreach(dto);
-  }
-
-  @Get('breaches')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  listBreaches(@Query() query: QueryBreachDto) {
-    return this.pdplService.listBreaches(query);
-  }
-
-  @Get('breaches/:id')
-  @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  getBreach(@Param('id') id: string) {
-    return this.pdplService.getBreach(id);
-  }
-
-  @Patch('breaches/:id/resolve')
-  @Roles(UserRole.TENANT_ADMIN)
-  resolveBreach(
-    @Param('id') id: string,
-    @Body() dto: ResolveBreachDto,
-  ) {
-    return this.pdplService.resolveBreach(id, dto);
-  }
-
-  @Post('breaches/:id/report')
-  @Roles(UserRole.TENANT_ADMIN)
-  reportBreach(@Param('id') id: string) {
-    return this.pdplService.reportBreach(id);
-  }
-
-  // ─── Data Access Log ──────────────────────────────────
-
-  @Get('access-logs')
-  @Roles(UserRole.TENANT_ADMIN)
-  listAccessLogs(@Query() query: QueryAccessLogDto) {
-    return this.pdplService.listAccessLogs(query);
+  @Post('breach')
+  @Roles(UserRole.SUPER_ADMIN)
+  reportBreach(@Body() body: any) {
+    return this.pdplService.reportBreach(body);
   }
 }
