@@ -1,9 +1,8 @@
-import { IsString } from 'class-validator';
+// src/modules/orders/dto/verify-otp.dto.ts
+import { IsString, Length } from 'class-validator';
 
 export class VerifyOtpDto {
   @IsString()
-  orderId: string;
-
-  @IsString()
-  otp: string;
+  @Length(6, 6)
+  code: string;
 }
