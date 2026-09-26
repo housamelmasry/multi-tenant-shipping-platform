@@ -88,6 +88,11 @@ export class StorageService implements OnModuleInit {
     this.bucket = this.getBucketName();
     this.publicUrl = this.getPublicUrl();
 
+    if (!this.config.get('S3_ACCESS_KEY') && this.provider === 's3') {
+      this.logger.warn('⏭️ Storage skipped — no S3 credentials configured');
+      return;
+    }
+
     await this.ensureBucketExists();
   }
 
@@ -279,9 +284,16 @@ export class StorageService implements OnModuleInit {
 
   private async ensureBucketExists(): Promise<void> {
     try {
-      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      await this.s3Client.send(
+        new HeadBucketCommand({ Bucket: this.bucket }),
+        { requestTimeout: 5000 },
+      );
       this.logger.log(`✅ Storage bucket ready: ${this.bucket}`);
-    } catch {
+    } catch (err) {
+      if (err.name === 'CredentialsProviderError' || err.name === 'CredentialsError' || err.message?.includes('connect')) {
+        this.logger.warn('⏭️ Storage skipped — no valid credentials');
+        return;
+      }
       // لو مش موجود → إنشاء (للـ MinIO development فقط)
       if (this.provider === 'minio') {
         await this.s3Client.send(

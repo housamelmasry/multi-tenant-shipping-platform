@@ -31,8 +31,8 @@ import * as path from 'path';
     I18nModule.forRoot({
       fallbackLanguage: 'ar', // العربية افتراضي
       loaderOptions: {
-        path: path.join(__dirname, '/i18n/'),
-        watch: true,
+        path: path.join(process.cwd(), 'src', 'i18n'),
+        watch: false,
       },
       resolvers: [
         // بيحدد اللغة من الـ header أو الـ query
