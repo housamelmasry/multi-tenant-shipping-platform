@@ -10,6 +10,12 @@ export type WebhookJobData = {
   event: WebhookEvent;
   payload: WebhookPayload;
   attempt: number;
+  /**
+   * Language of the originating request, carried so the worker can localize
+   * anything it adds to the payload. The worker has no request context of its
+   * own, so this cannot be recovered there.
+   */
+  lang?: string;
 };
 
 export type WebhookPayload = {

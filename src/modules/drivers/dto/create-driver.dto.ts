@@ -14,9 +14,11 @@ export class CreateDriverDto {
   @IsString()
   name: string;
 
+  // Points at the `validation.phone` catalog entry, resolved per request locale
+  // by LocalizedValidationPipe.
   @ApiProperty({ example: '+966500000001' })
   @IsString()
-  @Matches(/^\+?[0-9]{10,15}$/, { message: 'رقم الهاتف غير صحيح' })
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'validation.phone' })
   phone: string;
 
   @ApiPropertyOptional({ example: 'driver@example.invalid' })

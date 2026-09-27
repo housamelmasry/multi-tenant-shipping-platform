@@ -15,7 +15,12 @@ import { OrdersOtpService } from './orders-otp.service';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
 import { NotificationsService } from '@modules/notifications/notifications.service';
-import { SmsService } from '@modules/sms/sms.service';
+import {
+  SmsService,
+  orderNotificationTemplate,
+} from '@modules/sms/sms.service';
+import { I18nContext } from 'nestjs-i18n';
+import { I18nHelper, withLang } from '@i18n/i18n.utils';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -27,6 +32,7 @@ export class OrdersService {
     private trackingGateway: TrackingGateway,
     private notificationsService: NotificationsService,
     private smsService: SmsService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   // ─── Create ──────────────────────────────────────────
@@ -34,11 +40,20 @@ export class OrdersService {
   async create(tenantId: string, dto: CreateOrderDto) {
     const trackingCode = this.generateTrackingCode();
 
+    // The recipient's language is fixed now, at creation, because the status
+    // SMS that need it are sent long after this request has finished. The
+    // creating request's language is the best available guess; an explicit
+    // `recipientLang` in the body wins.
+    const recipientLang = withLang(
+      dto.recipientLang ?? I18nContext.current()?.lang,
+    );
+
     const order = await this.db.order.create({
       data: {
         tenantId,
         trackingCode,
         externalRef: dto.externalRef,
+        recipientLang,
 
         senderName: dto.sender.name,
         senderPhone: dto.sender.phone,
@@ -153,7 +168,9 @@ export class OrdersService {
       },
     });
 
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
 
     // Never return the OTP.
     const { otpCode, otpExpiresAt, ...safeOrder } = order;
@@ -173,7 +190,7 @@ export class OrdersService {
     // The order must be pending.
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException(
-        'لا يمكن تعيين سائق لهذا الطلب في حالته الحالية',
+        this.i18n.t('errors.order.cannot_assign_in_current_status'),
       );
     }
 
@@ -182,10 +199,12 @@ export class OrdersService {
       where: { id: dto.driverId, tenantId, isActive: true },
     });
 
-    if (!driver) throw new NotFoundException('السائق غير موجود');
+    if (!driver) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
 
     if (driver.status === DriverStatus.BUSY) {
-      throw new BadRequestException('السائق مشغول حالياً');
+      throw new BadRequestException(this.i18n.t('errors.driver.busy'));
     }
 
     // Transaction: assign the driver and update their status.
@@ -209,7 +228,9 @@ export class OrdersService {
       toStatus: OrderStatus.ASSIGNED,
       changedByType: 'user',
       changedById: userId,
-      note: `تم تعيين السائق ${driver.name}`,
+      note: this.i18n.t('errors.order.history_driver_assigned', {
+        args: { name: driver.name },
+      }),
     });
 
     // Send the webhook notification.
@@ -227,6 +248,7 @@ export class OrdersService {
       trackingCode: order.trackingCode,
       driverName: driver.name,
       driverPhone: driver.phone,
+      lang: order.recipientLang,
       tenantId,
       orderId,
     });
@@ -246,7 +268,9 @@ export class OrdersService {
 
     // Verify that this driver is assigned to the order.
     if (order.driverId !== driverId) {
-      throw new ForbiddenException('هذا الطلب غير مخصص لك');
+      throw new ForbiddenException(
+        this.i18n.t('errors.order.not_assigned_to_you'),
+      );
     }
 
     // Validate the status transition.
@@ -256,13 +280,22 @@ export class OrdersService {
 
     if (!allowedTransitions.includes(dto.status)) {
       throw new BadRequestException(
-        `لا يمكن الانتقال من ${OrderStatusMeta.label(order.status as OrderStatus)} إلى ${OrderStatusMeta.label(dto.status)}`,
+        this.i18n.t('errors.order.invalid_transition', {
+          args: {
+            from: this.i18n.t(
+              OrderStatusMeta.labelKey(order.status as OrderStatus),
+            ),
+            to: this.i18n.t(OrderStatusMeta.labelKey(dto.status)),
+          },
+        }),
       );
     }
 
     // Require an OTP before marking the order as delivered.
     if (dto.status === OrderStatus.DELIVERED) {
-      throw new BadRequestException('يجب التحقق من OTP أولاً لإتمام التسليم');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.otp_required_for_delivery'),
+      );
     }
 
     const updateData: any = {
@@ -307,16 +340,16 @@ export class OrdersService {
       driverId: updatedOrder.driverId ?? undefined,
     });
 
-    const notifiableStatuses = ['in_transit', 'delivered', 'failed'];
-    const statusLower = dto.status.toLowerCase();
-    if (notifiableStatuses.includes(statusLower)) {
+    const template = orderNotificationTemplate(dto.status.toLowerCase());
+    if (template) {
       await this.smsService.sendOrderNotification({
         phone: order.recipientPhone,
-        template: `order.${statusLower}`,
+        template,
         recipientName: order.recipientName,
         trackingCode: order.trackingCode,
         tenantId,
         orderId,
+        lang: order.recipientLang,
       });
     }
 
@@ -330,7 +363,9 @@ export class OrdersService {
 
     const cancellableStatuses = [OrderStatus.PENDING, OrderStatus.ASSIGNED];
     if (!cancellableStatuses.includes(order.status as OrderStatus)) {
-      throw new BadRequestException('لا يمكن إلغاء هذا الطلب في حالته الحالية');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.cannot_cancel_in_current_status'),
+      );
     }
 
     const updatedOrder = await this.db.$transaction(async (tx) => {
@@ -399,7 +434,11 @@ export class OrdersService {
       },
     });
 
-    if (!order) throw new NotFoundException('رقم التتبع غير صحيح');
+    if (!order) {
+      throw new NotFoundException(
+        this.i18n.t('errors.order.invalid_tracking_code'),
+      );
+    }
     return order;
   }
 
@@ -409,7 +448,9 @@ export class OrdersService {
     const order = await this.db.order.findFirst({
       where: { id: orderId, tenantId },
     });
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
     return order;
   }
 

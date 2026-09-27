@@ -5,18 +5,28 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { ThrottlerGuard, ThrottlerException } from '@nestjs/throttler';
-import { DatabaseService } from '@database/database.service';
-import { UserRole } from '@common/enums';
+import { ThrottlerGuard } from '@nestjs/throttler';
+import { Reflector } from '@nestjs/core';
+import { I18nHelper } from '@i18n/i18n.utils';
+import { ThrottlerModuleOptions, ThrottlerStorage } from '@nestjs/throttler';
 
 @Injectable()
 export class CustomRateLimitGuard extends ThrottlerGuard {
+  constructor(
+    options: ThrottlerModuleOptions,
+    storageService: ThrottlerStorage,
+    reflector: Reflector,
+    private readonly i18n: I18nHelper,
+  ) {
+    super(options, storageService, reflector);
+  }
+
   // Customize the error response.
   protected throwThrottlingException(): Promise<void> {
     throw new HttpException(
       {
         success: false,
-        message: 'تجاوزت الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً',
+        message: this.i18n.t('errors.common.rate_limited'),
         statusCode: HttpStatus.TOO_MANY_REQUESTS,
         retryAfter: 60, // seconds
       },

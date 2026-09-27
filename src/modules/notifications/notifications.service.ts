@@ -9,6 +9,7 @@ import {
 } from '@config/firebase.config';
 import { SendAnnouncementDto } from './dto/send-announcement.dto';
 import { QueryNotificationsDto } from './dto/query-notifications.dto';
+import { I18nHelper } from '@i18n/i18n.utils';
 
 @Injectable()
 export class NotificationsService implements OnModuleInit {
@@ -17,6 +18,7 @@ export class NotificationsService implements OnModuleInit {
   constructor(
     private db: DatabaseService,
     private config: ConfigService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   onModuleInit() {
@@ -34,11 +36,16 @@ export class NotificationsService implements OnModuleInit {
       },
     });
 
-    return { message: 'تم تحديث رمز الإشعارات بنجاح' };
+    return { message: this.i18n.t('errors.notification.fcm_token_updated') };
   }
 
   // ─── Core Send Method ─────────────────────────────────
 
+  /**
+   * `lang` is the driver's preferred language. It is resolved from the driver
+   * record below, not from the request, because a notification may be triggered
+   * by a job or another tenant's request. Callers may pass it to override.
+   */
   async sendToDriver(params: {
     driverId: string;
     tenantId: string;
@@ -46,17 +53,25 @@ export class NotificationsService implements OnModuleInit {
     data?: Record<string, string>;
     lang?: string;
   }) {
-    const { driverId, tenantId, type, data = {}, lang = 'ar' } = params;
+    const { driverId, tenantId, type, data = {} } = params;
 
-    // Get the FCM token.
+    // Get the FCM token and the driver's preferred language.
     const driver = await this.db.driver.findUnique({
       where: { id: driverId },
-      select: { fcmToken: true, fcmTokenAt: true, name: true },
+      select: {
+        fcmToken: true,
+        fcmTokenAt: true,
+        name: true,
+        lang: true,
+      },
     });
 
+    const lang = params.lang ?? driver?.lang;
+
     // Create the notification record.
-    const title = NotificationMeta.title(type, lang);
-    const body = this.buildNotificationBody(type, data, lang);
+    const keys = NotificationMeta.keys(type);
+    const title = this.i18n.t(keys.title, { lang });
+    const body = this.i18n.t(keys.body, { lang, args: data });
 
     const notification = await this.db.notification.create({
       data: {
@@ -223,7 +238,10 @@ export class NotificationsService implements OnModuleInit {
     });
 
     if (drivers.length === 0) {
-      return { sent: 0, message: 'لا يوجد سائقون لإرسال الإشعار إليهم' };
+      return {
+        sent: 0,
+        message: this.i18n.t('errors.notification.no_drivers_to_notify'),
+      };
     }
 
     // Multicast sends to a group in one more efficient batch.
@@ -305,7 +323,7 @@ export class NotificationsService implements OnModuleInit {
       data: { status: 'READ', readAt: new Date() },
     });
 
-    return { message: 'تم التحديث' };
+    return { message: this.i18n.t('errors.notification.updated') };
   }
 
   async markAllAsRead(driverId: string) {
@@ -314,33 +332,6 @@ export class NotificationsService implements OnModuleInit {
       data: { status: 'READ', readAt: new Date() },
     });
 
-    return { message: 'تم تحديد الكل كمقروء' };
-  }
-
-  // ─── Private ──────────────────────────────────────────
-
-  private buildNotificationBody(
-    type: NotificationType,
-    data: Record<string, string>,
-    lang = 'ar',
-  ): string {
-    const bodies: Record<string, Record<NotificationType, string>> = {
-      ar: {
-        new_order: `طلب جديد — ${data.trackingCode ?? ''} — ${data.address ?? ''}`,
-        new_return: `طلب إرجاع — يرجى التوجه إلى ${data.warehouseAddress ?? ''}`,
-        order_cancelled: `تم إلغاء الطلب ${data.trackingCode ?? ''}`,
-        reminder: `لديك طلب معلق منذ فترة — ${data.trackingCode ?? ''}`,
-        announcement: data.body ?? '',
-      },
-      en: {
-        new_order: `New order — ${data.trackingCode ?? ''} — ${data.address ?? ''}`,
-        new_return: `Return request — go to ${data.warehouseAddress ?? ''}`,
-        order_cancelled: `Order ${data.trackingCode ?? ''} was cancelled`,
-        reminder: `You have a pending order — ${data.trackingCode ?? ''}`,
-        announcement: data.body ?? '',
-      },
-    };
-
-    return bodies[lang]?.[type] ?? bodies['ar'][type];
+    return { message: this.i18n.t('errors.notification.all_marked_read') };
   }
 }

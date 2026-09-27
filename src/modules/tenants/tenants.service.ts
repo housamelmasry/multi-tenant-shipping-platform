@@ -15,6 +15,7 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { QueryTenantDto } from './dto/query-tenant.dto';
 import { RegenerateApiKeyDto } from './dto/regenerate-api-key.dto';
 import { UserRole } from '@common/enums';
+import { I18nHelper } from '@i18n/i18n.utils';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -23,6 +24,7 @@ export class TenantsService {
   constructor(
     private db: DatabaseService,
     @Inject(REDIS_CLIENT) private redis: Redis,
+    private readonly i18n: I18nHelper,
   ) {}
 
   // ─── Super Admin Only ────────────────────────────────
@@ -135,7 +137,7 @@ export class TenantsService {
     });
 
     if (!tenant) {
-      throw new NotFoundException('الشركة غير موجودة');
+      throw new NotFoundException(this.i18n.t('errors.tenant.not_found'));
     }
 
     // Never return the API secret.
@@ -178,13 +180,15 @@ export class TenantsService {
     // Verify the password before regenerating the key.
     const user = await this.db.user.findUnique({ where: { id: userId } });
     if (!user) {
-      throw new UnauthorizedException('المستخدم غير موجود');
+      throw new UnauthorizedException(this.i18n.t('errors.user.not_found'));
     }
 
     const isValid = await bcrypt.compare(dto.password, user.password);
 
     if (!isValid) {
-      throw new UnauthorizedException('كلمة المرور غير صحيحة');
+      throw new UnauthorizedException(
+        this.i18n.t('errors.user.invalid_password'),
+      );
     }
 
     const apiKey = this.generateApiKey();
@@ -206,7 +210,9 @@ export class TenantsService {
       where: { id: tenantId },
       select: { settings: true },
     });
-    if (!tenant) throw new NotFoundException('الشركة غير موجودة');
+    if (!tenant) {
+      throw new NotFoundException(this.i18n.t('errors.tenant.not_found'));
+    }
 
     const currentSettings = (tenant.settings as object) ?? {};
     const newSettings = { ...currentSettings, ...settings };
@@ -301,21 +307,23 @@ export class TenantsService {
 
   private async assertTenantExists(id: string) {
     const tenant = await this.db.tenant.findUnique({ where: { id } });
-    if (!tenant) throw new NotFoundException('الشركة غير موجودة');
+    if (!tenant) {
+      throw new NotFoundException(this.i18n.t('errors.tenant.not_found'));
+    }
     return tenant;
   }
 
   private async assertSlugUnique(slug: string, excludeId?: string) {
     const existing = await this.db.tenant.findUnique({ where: { slug } });
     if (existing && existing.id !== excludeId) {
-      throw new ConflictException('هذا الـ slug مستخدم بالفعل');
+      throw new ConflictException(this.i18n.t('errors.tenant.slug_in_use'));
     }
   }
 
   private async assertAdminEmailUnique(email: string) {
     const existing = await this.db.user.findUnique({ where: { email } });
     if (existing) {
-      throw new ConflictException('هذا الإيميل مستخدم بالفعل');
+      throw new ConflictException(this.i18n.t('errors.tenant.email_in_use'));
     }
   }
 

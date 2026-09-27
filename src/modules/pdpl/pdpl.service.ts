@@ -7,7 +7,18 @@ import {
 import { DatabaseService } from '@database/database.service';
 import { StorageService } from '@modules/storage/storage.service';
 import { RETENTION_POLICY } from '@common/constants/retention.constants';
+import { I18nHelper } from '@i18n/i18n.utils';
 import { Cron, CronExpression } from '@nestjs/schedule';
+
+/**
+ * Marker written in place of erased personal data.
+ *
+ * This is persisted DATA, not a user-facing message, so it is deliberately
+ * NOT translated: rows anonymized by earlier runs must keep matching, and
+ * changing the value per locale would make the same redaction differ between
+ * two calls. It also stays stable regardless of the request language.
+ */
+const REDACTED = '[محذوف]';
 
 @Injectable()
 export class PdplService {
@@ -16,6 +27,7 @@ export class PdplService {
   constructor(
     private db: DatabaseService,
     private storage: StorageService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   // ─── Consent Management ───────────────────────────────
@@ -57,7 +69,7 @@ export class PdplService {
       data: { isActive: false, revokedAt: new Date() },
     });
 
-    return { message: 'تم سحب الموافقة بنجاح' };
+    return { message: this.i18n.t('errors.pdpl.consent_withdrawn') };
   }
 
   async hasConsent(tenantId: string, phone: string, purpose: string) {
@@ -117,7 +129,9 @@ export class PdplService {
       where: { id: requestId, tenantId, type: 'ACCESS' },
     });
 
-    if (!request) throw new NotFoundException('الطلب غير موجود');
+    if (!request) {
+      throw new NotFoundException(this.i18n.t('errors.pdpl.order_not_found'));
+    }
 
     let report: Record<string, any> = {};
 
@@ -150,8 +164,7 @@ export class PdplService {
         totalOrders: orders.length,
         consents,
         generatedAt: new Date().toISOString(),
-        retentionInfo:
-          'يتم الاحتفاظ ببياناتك لمدة 3 سنوات وفقاً لسياسة الخصوصية',
+        retentionInfo: this.i18n.t('errors.pdpl.retention_info'),
       };
     }
 
@@ -190,18 +203,17 @@ export class PdplService {
   // ─── Right to erase personal data ─────────────────────
 
   async anonymizeCustomerData(tenantId: string, phone: string) {
-    const anonymizedName = '[محذوف]';
     const anonymizedPhone = `+966**${phone.slice(-4)}`;
 
     const updated = await this.db.order.updateMany({
       where: { tenantId, recipientPhone: phone },
       data: {
-        recipientName: anonymizedName,
+        recipientName: REDACTED,
         recipientPhone: anonymizedPhone,
-        recipientAddress: '[محذوف]',
+        recipientAddress: REDACTED,
         recipientLat: null,
         recipientLng: null,
-        senderName: anonymizedName,
+        senderName: REDACTED,
         senderPhone: anonymizedPhone,
       },
     });
@@ -214,7 +226,7 @@ export class PdplService {
     );
 
     return {
-      message: 'تم إخفاء البيانات الشخصية بنجاح',
+      message: this.i18n.t('errors.pdpl.anonymized'),
       affectedOrders: updated.count,
     };
   }
@@ -224,7 +236,9 @@ export class PdplService {
       where: { id: driverId, tenantId },
     });
 
-    if (!driver) throw new NotFoundException('السائق غير موجود');
+    if (!driver) {
+      throw new NotFoundException(this.i18n.t('errors.pdpl.driver_not_found'));
+    }
 
     const activeOrders = await this.db.order.count({
       where: {
@@ -235,7 +249,7 @@ export class PdplService {
 
     if (activeOrders > 0) {
       throw new BadRequestException(
-        'لا يمكن حذف بيانات السائق لوجود طلبات نشطة',
+        this.i18n.t('errors.pdpl.cannot_delete_driver'),
       );
     }
 
@@ -243,10 +257,10 @@ export class PdplService {
       await tx.driver.update({
         where: { id: driverId },
         data: {
-          name: '[محذوف]',
+          name: REDACTED,
           phone: `+966**${driver.phone.slice(-4)}`,
           email: null,
-          nationalId: '[محذوف]',
+          nationalId: REDACTED,
           currentLat: null,
           currentLng: null,
           isActive: false,
@@ -259,7 +273,7 @@ export class PdplService {
       });
     });
 
-    return { message: 'تم حذف البيانات الشخصية للسائق بنجاح' };
+    return { message: this.i18n.t('errors.pdpl.driver_data_deleted') };
   }
 
   // ─── Data Access Logging ──────────────────────────────
@@ -312,9 +326,11 @@ export class PdplService {
 
   // ─── Automated Cleanup (Cron Jobs) ───────────────────
 
+  // Cron jobs have no request locale, so log lines stay in the neutral
+  // language rather than depending on whichever tenant triggered the run.
   @Cron(CronExpression.EVERY_DAY_AT_2AM)
   async runRetentionCleanup() {
-    this.logger.log('بدء تنظيف البيانات المنتهية مدة احتفاظها...');
+    this.logger.log('Starting retention cleanup...');
 
     await Promise.all([
       this.cleanupCompletedOrders(),
@@ -324,7 +340,7 @@ export class PdplService {
       this.cleanupDeliveryPhotos(),
     ]);
 
-    this.logger.log('انتهى التنظيف التلقائي');
+    this.logger.log('Automatic cleanup finished');
   }
 
   private async cleanupCompletedOrders() {

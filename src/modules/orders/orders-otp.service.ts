@@ -9,6 +9,7 @@ import { OrderStatus, DriverStatus } from '@common/enums';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { SmsService } from '@modules/sms/sms.service';
 import { StorageService } from '@modules/storage/storage.service';
+import { I18nHelper } from '@i18n/i18n.utils';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class OrdersOtpService {
     private webhooksService: WebhooksService,
     private smsService: SmsService,
     private storageService: StorageService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   async generateAndSend(orderId: string, tenantId: string, driverId: string) {
@@ -26,14 +28,20 @@ export class OrdersOtpService {
       include: { tenant: true },
     });
 
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
 
     if (order.driverId !== driverId) {
-      throw new BadRequestException('هذا الطلب غير مخصص لك');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.not_assigned_to_you'),
+      );
     }
 
     if (order.status !== OrderStatus.IN_TRANSIT) {
-      throw new BadRequestException('الطلب ليس في حالة التوصيل');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.not_in_delivery_state'),
+      );
     }
 
     const otpCode = this.generateOtp();
@@ -52,9 +60,10 @@ export class OrdersOtpService {
       senderName: order.tenant?.name ?? '',
       tenantId,
       orderId,
+      lang: order.recipientLang,
     });
 
-    return { message: 'تم إرسال رمز التحقق للعميل' };
+    return { message: this.i18n.t('errors.order.otp_sent') };
   }
 
   async verify(
@@ -68,25 +77,29 @@ export class OrdersOtpService {
       where: { id: orderId, tenantId },
     });
 
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
 
     // Validate the request.
     if (order.driverId !== driverId) {
-      throw new BadRequestException('هذا الطلب غير مخصص لك');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.not_assigned_to_you'),
+      );
     }
 
     if (!order.otpCode || !order.otpExpiresAt) {
-      throw new BadRequestException('يجب طلب رمز التحقق أولاً');
+      throw new BadRequestException(this.i18n.t('errors.order.otp_required'));
     }
 
     if (new Date() > order.otpExpiresAt) {
       throw new BadRequestException(
-        'انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد',
+        this.i18n.t('errors.order.otp_expired_request_new'),
       );
     }
 
     if (order.otpCode !== code) {
-      throw new BadRequestException('رمز التحقق غير صحيح');
+      throw new BadRequestException(this.i18n.t('errors.order.otp_invalid'));
     }
 
     // Upload the photo if one was provided.
@@ -137,7 +150,7 @@ export class OrdersOtpService {
           toStatus: OrderStatus.DELIVERED,
           changedByType: 'driver',
           changedById: driverId,
-          note: 'تم التسليم بنجاح مع التحقق من OTP',
+          note: this.i18n.t('errors.order.history_delivered'),
         },
       });
 
@@ -150,7 +163,7 @@ export class OrdersOtpService {
       updatedOrder,
     );
 
-    return { message: 'تم التسليم بنجاح' };
+    return { message: this.i18n.t('errors.order.delivered_successfully') };
   }
 
   // ─── Private ──────────────────────────────────────────

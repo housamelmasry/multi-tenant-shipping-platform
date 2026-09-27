@@ -8,6 +8,7 @@ import { OrderStatus, DriverStatus } from '@common/enums';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
 import { NotificationsService } from '@modules/notifications/notifications.service';
+import { I18nHelper } from '@i18n/i18n.utils';
 
 @Injectable()
 export class OrdersAssignmentService {
@@ -16,18 +17,25 @@ export class OrdersAssignmentService {
     private webhooksService: WebhooksService,
     private trackingGateway: TrackingGateway,
     private notificationsService: NotificationsService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   async autoAssign(orderId: string, tenantId: string) {
     const order = await this.db.order.findFirst({
       where: { id: orderId, tenantId },
     });
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
     if (order.status !== OrderStatus.PENDING) {
-      throw new BadRequestException('يمكن تعيين الطلبات المعلقة فقط');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.only_pending_can_be_assigned'),
+      );
     }
     if (!order.senderLat || !order.senderLng) {
-      throw new BadRequestException('الطلب لا يحتوي على إحداثيات المرسل');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.missing_sender_coordinates'),
+      );
     }
 
     const config = await this.getTenantAssignmentConfig(tenantId);
@@ -38,7 +46,9 @@ export class OrdersAssignmentService {
       config.maxDistanceKm,
     );
     if (!driver) {
-      throw new BadRequestException('لا يوجد سائق متاح قريب');
+      throw new BadRequestException(
+        this.i18n.t('errors.order.no_nearby_driver'),
+      );
     }
 
     const [updatedOrder] = await this.db.$transaction([
@@ -58,11 +68,17 @@ export class OrdersAssignmentService {
         fromStatus: OrderStatus.PENDING,
         toStatus: OrderStatus.ASSIGNED,
         changedByType: 'system',
-        note: `تعيين تلقائي: ${driver.name} (${driver.distanceKm} كم)`,
+        note: this.i18n.t('errors.order.history_auto_assigned', {
+          args: { name: driver.name, distance: driver.distanceKm },
+        }),
       },
     });
 
-    await this.webhooksService.dispatch(tenantId, 'order.assigned', updatedOrder);
+    await this.webhooksService.dispatch(
+      tenantId,
+      'order.assigned',
+      updatedOrder,
+    );
     this.trackingGateway.emitOrderStatusUpdate(tenantId, {
       id: updatedOrder.id,
       trackingCode: updatedOrder.trackingCode,
@@ -104,7 +120,11 @@ export class OrdersAssignmentService {
         results.assigned++;
       } catch (e: any) {
         results.skipped++;
-        results.errors.push(`الطلب ${order.trackingCode}: ${e.message}`);
+        results.errors.push(
+          this.i18n.t('errors.order.bulk_assign_failed', {
+            args: { trackingCode: order.trackingCode, reason: e.message },
+          }),
+        );
       }
     }
 
@@ -121,7 +141,9 @@ export class OrdersAssignmentService {
         status: true,
       },
     });
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
 
     const config = await this.getTenantAssignmentConfig(tenantId);
     const nearestDrivers = await this.getNearestDrivers(
@@ -142,7 +164,10 @@ export class OrdersAssignmentService {
         distanceKm: d.distanceKm,
       })),
       wouldAssignDriver: nearestDrivers[0]
-        ? { name: nearestDrivers[0].name, distanceKm: nearestDrivers[0].distanceKm }
+        ? {
+            name: nearestDrivers[0].name,
+            distanceKm: nearestDrivers[0].distanceKm,
+          }
         : null,
       config,
     };
@@ -163,7 +188,12 @@ export class OrdersAssignmentService {
     lng: number,
     maxDistanceKm: number,
   ) {
-    const drivers = await this.getNearestDrivers(tenantId, lat, lng, maxDistanceKm);
+    const drivers = await this.getNearestDrivers(
+      tenantId,
+      lat,
+      lng,
+      maxDistanceKm,
+    );
     return drivers[0] ?? null;
   }
 

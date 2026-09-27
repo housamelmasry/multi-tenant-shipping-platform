@@ -13,7 +13,7 @@ import { QueryReturnsDto } from './dto/query-returns.dto';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { SmsService } from '@modules/sms/sms.service';
-import { I18nContext } from 'nestjs-i18n';
+import { I18nHelper } from '@i18n/i18n.utils';
 import {
   ReturnStatus,
   ReturnStatusMeta,
@@ -29,6 +29,7 @@ export class ReturnsService {
     private webhooksService: WebhooksService,
     private notificationsService: NotificationsService,
     private smsService: SmsService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   // ─── Create Return Request ────────────────────────────
@@ -39,7 +40,9 @@ export class ReturnsService {
       where: { id: dto.orderId, tenantId },
     });
 
-    if (!order) throw new NotFoundException('الطلب غير موجود');
+    if (!order) {
+      throw new NotFoundException(this.i18n.t('errors.order.not_found'));
+    }
 
     // The order must be in a returnable state.
     const returnableStatuses = [
@@ -50,7 +53,7 @@ export class ReturnsService {
 
     if (!returnableStatuses.includes(order.status as OrderStatus)) {
       throw new BadRequestException(
-        'لا يمكن إنشاء طلب إرجاع لهذا الطلب في حالته الحالية',
+        this.i18n.t('errors.return.cannot_create_in_current_status'),
       );
     }
 
@@ -63,7 +66,9 @@ export class ReturnsService {
     });
 
     if (existingReturn) {
-      throw new BadRequestException('يوجد طلب إرجاع مفتوح لهذه الشحنة بالفعل');
+      throw new BadRequestException(
+        this.i18n.t('errors.return.already_exists'),
+      );
     }
 
     // Create the return request and update the original order status.
@@ -97,7 +102,7 @@ export class ReturnsService {
           toStatus: ReturnStatus.PENDING,
           changedByType: 'user',
           changedById: userId,
-          note: 'تم إنشاء طلب الإرجاع',
+          note: this.i18n.t('errors.return.history_created'),
         },
       });
 
@@ -193,7 +198,9 @@ export class ReturnsService {
       },
     });
 
-    if (!returnRequest) throw new NotFoundException('طلب الإرجاع غير موجود');
+    if (!returnRequest) {
+      throw new NotFoundException(this.i18n.t('errors.return.not_found'));
+    }
 
     const { otpCode, otpExpiresAt, ...safeReturn } = returnRequest;
     return safeReturn;
@@ -214,7 +221,7 @@ export class ReturnsService {
 
     if (returnRequest.status !== ReturnStatus.PENDING) {
       throw new BadRequestException(
-        'لا يمكن تعيين سائق لهذا الطلب في حالته الحالية',
+        this.i18n.t('errors.return.cannot_assign_in_current_status'),
       );
     }
 
@@ -222,10 +229,12 @@ export class ReturnsService {
       where: { id: dto.driverId, tenantId, isActive: true },
     });
 
-    if (!driver) throw new NotFoundException('السائق غير موجود');
+    if (!driver) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
 
     if (driver.status === DriverStatus.BUSY) {
-      throw new BadRequestException('السائق مشغول حالياً');
+      throw new BadRequestException(this.i18n.t('errors.driver.busy'));
     }
 
     const [updatedReturn] = await this.db.$transaction([
@@ -245,7 +254,9 @@ export class ReturnsService {
       toStatus: ReturnStatus.ASSIGNED,
       changedByType: 'user',
       changedById: userId,
-      note: `تم تعيين السائق ${driver.name}`,
+      note: this.i18n.t('errors.return.history_driver_assigned', {
+        args: { name: driver.name },
+      }),
     });
 
     await this.notificationsService.notifyNewReturn(dto.driverId, tenantId, {
@@ -271,7 +282,9 @@ export class ReturnsService {
     );
 
     if (returnRequest.driverId !== driverId) {
-      throw new ForbiddenException('هذا الطلب غير مخصص لك');
+      throw new ForbiddenException(
+        this.i18n.t('errors.return.not_assigned_to_you'),
+      );
     }
 
     const allowedTransitions = ReturnStatusMeta.allowedTransitions(
@@ -279,21 +292,21 @@ export class ReturnsService {
     );
 
     if (!allowedTransitions.includes(dto.status)) {
-      const i18n = I18nContext.current();
-      const from =
-        i18n?.t(`errors.return.status.${returnRequest.status}`) ??
-        returnRequest.status;
-      const to = i18n?.t(`errors.return.status.${dto.status}`) ?? dto.status;
-
       throw new BadRequestException(
-        i18n?.t('errors.return.invalid_transition', { args: { from, to } }) ??
-          `Cannot transition from ${from} to ${to}`,
+        this.i18n.t('errors.return.invalid_transition', {
+          args: {
+            from: this.i18n.t(`errors.return_status.${returnRequest.status}`),
+            to: this.i18n.t(`errors.return_status.${dto.status}`),
+          },
+        }),
       );
     }
 
     // Require an OTP before marking the return as delivered.
     if (dto.status === ReturnStatus.RETURNED) {
-      throw new BadRequestException('يجب التحقق من OTP أولاً لإتمام الإرجاع');
+      throw new BadRequestException(
+        this.i18n.t('errors.return.otp_required_for_return'),
+      );
     }
 
     const updatedReturn = await this.db.returnRequest.update({
@@ -326,11 +339,15 @@ export class ReturnsService {
     );
 
     if (returnRequest.driverId !== driverId) {
-      throw new ForbiddenException('هذا الطلب غير مخصص لك');
+      throw new ForbiddenException(
+        this.i18n.t('errors.return.not_assigned_to_you'),
+      );
     }
 
     if (returnRequest.status !== ReturnStatus.IN_TRANSIT) {
-      throw new BadRequestException('الطلب ليس في طريقه للمستودع');
+      throw new BadRequestException(
+        this.i18n.t('errors.return.not_in_transit_to_warehouse'),
+      );
     }
 
     const otpCode = crypto.randomInt(100000, 999999).toString();
@@ -349,7 +366,7 @@ export class ReturnsService {
       tenantId,
     });
 
-    return { message: 'تم إرسال رمز التحقق لموظف المستودع' };
+    return { message: this.i18n.t('errors.return.otp_sent') };
   }
 
   async verifyWarehouseOtp(
@@ -364,22 +381,26 @@ export class ReturnsService {
       include: { order: true },
     });
 
-    if (!returnRequest) throw new NotFoundException('طلب الإرجاع غير موجود');
+    if (!returnRequest) {
+      throw new NotFoundException(this.i18n.t('errors.return.not_found'));
+    }
 
     if (returnRequest.driverId !== driverId) {
-      throw new ForbiddenException('هذا الطلب غير مخصص لك');
+      throw new ForbiddenException(
+        this.i18n.t('errors.return.not_assigned_to_you'),
+      );
     }
 
     if (!returnRequest.otpCode || !returnRequest.otpExpiresAt) {
-      throw new BadRequestException('يجب طلب رمز التحقق أولاً');
+      throw new BadRequestException(this.i18n.t('errors.return.otp_required'));
     }
 
     if (new Date() > returnRequest.otpExpiresAt) {
-      throw new BadRequestException('انتهت صلاحية رمز التحقق');
+      throw new BadRequestException(this.i18n.t('errors.return.otp_expired'));
     }
 
     if (returnRequest.otpCode !== code) {
-      throw new BadRequestException('رمز التحقق غير صحيح');
+      throw new BadRequestException(this.i18n.t('errors.return.otp_invalid'));
     }
 
     // ✅ Complete the return.
@@ -409,7 +430,7 @@ export class ReturnsService {
           toStatus: ReturnStatus.RETURNED,
           changedByType: 'driver',
           changedById: driverId,
-          note: 'تم الإرجاع للمستودع بنجاح مع التحقق من OTP',
+          note: this.i18n.t('errors.return.history_returned'),
         },
       });
 
@@ -423,7 +444,7 @@ export class ReturnsService {
       updatedReturn,
     );
 
-    return { message: 'تم الإرجاع للمستودع بنجاح ✅' };
+    return { message: this.i18n.t('errors.return.completed_successfully') };
   }
 
   // ─── Cancel ───────────────────────────────────────────
@@ -440,7 +461,9 @@ export class ReturnsService {
         returnRequest.status as ReturnStatus,
       )
     ) {
-      throw new BadRequestException('لا يمكن إلغاء هذا الطلب في حالته الحالية');
+      throw new BadRequestException(
+        this.i18n.t('errors.return.cannot_cancel_in_current_status'),
+      );
     }
 
     await this.db.$transaction(async (tx) => {
@@ -472,7 +495,7 @@ export class ReturnsService {
       changedById: userId,
     });
 
-    return { message: 'تم إلغاء طلب الإرجاع' };
+    return { message: this.i18n.t('errors.return.cancelled') };
   }
 
   // ─── Private ──────────────────────────────────────────
@@ -481,7 +504,9 @@ export class ReturnsService {
     const returnRequest = await this.db.returnRequest.findFirst({
       where: { id, tenantId },
     });
-    if (!returnRequest) throw new NotFoundException('طلب الإرجاع غير موجود');
+    if (!returnRequest) {
+      throw new NotFoundException(this.i18n.t('errors.return.not_found'));
+    }
     return returnRequest;
   }
 

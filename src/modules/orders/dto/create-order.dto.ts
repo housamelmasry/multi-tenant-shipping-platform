@@ -2,6 +2,7 @@ import {
   IsString,
   IsOptional,
   IsNumber,
+  IsIn,
   Min,
   ValidateNested,
   IsLatitude,
@@ -9,6 +10,10 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from '@i18n/i18n.constants';
 
 class AddressDto {
   @ApiProperty({ example: 'Demo Store' })
@@ -77,6 +82,18 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   externalRef?: string;
+
+  /**
+   * Language the recipient should be contacted in (status SMS, notifications).
+   *
+   * Persisted on the order so later status changes can be sent in the
+   * recipient's language long after the creating request is gone. Defaults to
+   * the language of the creating request when omitted.
+   */
+  @ApiPropertyOptional({ example: 'ar', enum: ['ar', 'en'] })
+  @IsOptional()
+  @IsIn([...SUPPORTED_LANGUAGES])
+  recipientLang?: SupportedLanguage;
 }
 
 export class OrderResponseDto {

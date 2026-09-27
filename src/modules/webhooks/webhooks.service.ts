@@ -9,6 +9,8 @@ import { Queue } from 'bull';
 import { DatabaseService } from '@database/database.service';
 import { CreateWebhookDto, WebhookEvent } from './dto/create-webhook.dto';
 import { WebhookJobData } from './types/webhook-job.type';
+import { I18nHelper } from '@i18n/i18n.utils';
+import { I18nContext } from 'nestjs-i18n';
 import * as crypto from 'crypto';
 
 export const WEBHOOK_QUEUE = 'webhooks';
@@ -18,6 +20,7 @@ export class WebhooksService {
   constructor(
     private db: DatabaseService,
     @InjectQueue(WEBHOOK_QUEUE) private webhookQueue: Queue,
+    private readonly i18n: I18nHelper,
   ) {}
 
   // ─── CRUD ─────────────────────────────────────────────
@@ -29,7 +32,9 @@ export class WebhooksService {
     });
 
     if (existing) {
-      throw new ConflictException('هذا الـ URL مسجل بالفعل');
+      throw new ConflictException(
+        this.i18n.t('errors.webhook.url_already_registered'),
+      );
     }
 
     const secret = this.generateSecret();
@@ -71,7 +76,7 @@ export class WebhooksService {
   async delete(id: string, tenantId: string) {
     await this.assertWebhookBelongsToTenant(id, tenantId);
     await this.db.webhook.delete({ where: { id } });
-    return { message: 'تم الحذف بنجاح' };
+    return { message: this.i18n.t('errors.webhook.deleted') };
   }
 
   async rotateSecret(id: string, tenantId: string) {
@@ -119,7 +124,8 @@ export class WebhooksService {
       },
     });
 
-    if (!log) throw new NotFoundException('السجل غير موجود');
+    if (!log)
+      throw new NotFoundException(this.i18n.t('errors.webhook.log_not_found'));
     return log;
   }
 
@@ -131,10 +137,11 @@ export class WebhooksService {
       include: { webhook: true },
     });
 
-    if (!log) throw new NotFoundException('السجل غير موجود');
+    if (!log)
+      throw new NotFoundException(this.i18n.t('errors.webhook.log_not_found'));
 
     if (log.status === 'success') {
-      throw new ConflictException('هذا الإشعار تم إرساله بنجاح مسبقاً');
+      throw new ConflictException(this.i18n.t('errors.webhook.already_sent'));
     }
 
     // Add the job back to the queue.
@@ -149,7 +156,7 @@ export class WebhooksService {
       attempt: 0,
     });
 
-    return { message: 'تمت إعادة الجدولة بنجاح' };
+    return { message: this.i18n.t('errors.webhook.rescheduled') };
   }
 
   // ─── Dispatch (called by other services) ──────────────
@@ -210,6 +217,8 @@ export class WebhooksService {
       event,
       payload,
       attempt: 0,
+      // Snapshot the request locale; the worker cannot read it later.
+      lang: I18nContext.current()?.lang,
     });
   }
 
@@ -234,7 +243,9 @@ export class WebhooksService {
     const webhook = await this.db.webhook.findFirst({
       where: { id, tenantId },
     });
-    if (!webhook) throw new NotFoundException('الـ Webhook غير موجود');
+    if (!webhook) {
+      throw new NotFoundException(this.i18n.t('errors.webhook.not_found'));
+    }
     return webhook;
   }
 }

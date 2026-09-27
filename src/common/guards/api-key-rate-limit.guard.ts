@@ -10,6 +10,7 @@ import { Inject } from '@nestjs/common';
 import { REDIS_CLIENT } from '../../redis/redis.module';
 import { Redis } from 'ioredis';
 import { DatabaseService } from '@database/database.service';
+import { I18nHelper } from '@i18n/i18n.utils';
 
 // Daily limits for each plan.
 const PLAN_LIMITS = {
@@ -23,6 +24,7 @@ export class ApiKeyRateLimitGuard implements CanActivate {
   constructor(
     @Inject(REDIS_CLIENT) private redis: Redis,
     private db: DatabaseService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -58,7 +60,9 @@ export class ApiKeyRateLimitGuard implements CanActivate {
       throw new HttpException(
         {
           success: false,
-          message: `تجاوزت الحد اليومي للـ API (${limit.toLocaleString()} طلب/يوم)`,
+          message: this.i18n.t('errors.common.rate_limited_api_key', {
+            args: { limit: limit.toLocaleString() },
+          }),
           statusCode: HttpStatus.TOO_MANY_REQUESTS,
           limit,
           used: count,

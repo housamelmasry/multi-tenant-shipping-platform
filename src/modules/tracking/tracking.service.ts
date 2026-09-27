@@ -2,10 +2,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { DatabaseService } from '@database/database.service';
 import { OrderStatus } from '@common/enums';
+import { I18nHelper } from '@i18n/i18n.utils';
 
 @Injectable()
 export class TrackingService {
-  constructor(private db: DatabaseService) {}
+  constructor(
+    private db: DatabaseService,
+    private readonly i18n: I18nHelper,
+  ) {}
 
   // ─── Public tracking for end customers ────────────────
 
@@ -41,7 +45,11 @@ export class TrackingService {
       },
     });
 
-    if (!order) throw new NotFoundException('رمز التتبع غير صحيح');
+    if (!order) {
+      throw new NotFoundException(
+        this.i18n.t('errors.tracking.invalid_tracking_code'),
+      );
+    }
 
     // Return the driver's location only when the order is in transit.
     const showDriverLocation = order.status === OrderStatus.IN_TRANSIT;

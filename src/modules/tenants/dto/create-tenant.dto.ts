@@ -15,10 +15,10 @@ export class CreateTenantDto {
   @MaxLength(100)
   name: string;
 
+  // Points at the `validation.slug` catalog entry, resolved per request locale
+  // by LocalizedValidationPipe.
   @IsString()
-  @Matches(/^[a-z0-9-]+$/, {
-    message: 'الـ slug يجب أن يحتوي على أحرف صغيرة وأرقام وشرطة فقط',
-  })
+  @Matches(/^[a-z0-9-]+$/, { message: 'validation.slug' })
   slug: string;
 
   @IsEnum(Plan)

@@ -8,9 +8,12 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '../enums';
+import { I18nHelper } from '@i18n/i18n.utils';
 
 @Injectable()
 export class TenantGuard implements CanActivate {
+  constructor(private readonly i18n: I18nHelper) {}
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
@@ -21,7 +24,9 @@ export class TenantGuard implements CanActivate {
 
     // Tenant users can access only their own tenant.
     if (paramTenantId && user.tenantId !== paramTenantId) {
-      throw new ForbiddenException('ليس لديك صلاحية للوصول لهذه الشركة');
+      throw new ForbiddenException(
+        this.i18n.t('errors.common.forbidden_tenant'),
+      );
     }
 
     return true;

@@ -11,6 +11,7 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 import { QueryDriversDto } from './dto/query-drivers.dto';
 import { DriverStatus, UserRole } from '@common/enums';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
+import { I18nHelper } from '@i18n/i18n.utils';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class DriversService {
   constructor(
     private db: DatabaseService,
     private trackingGateway: TrackingGateway,
+    private readonly i18n: I18nHelper,
   ) {}
 
   // ─── CRUD ─────────────────────────────────────────────
@@ -28,7 +30,7 @@ export class DriversService {
       where: { phone: dto.phone },
     });
     if (existingDriver) {
-      throw new ConflictException('رقم الهاتف مستخدم بالفعل');
+      throw new ConflictException(this.i18n.t('errors.driver.phone_in_use'));
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
@@ -137,7 +139,9 @@ export class DriversService {
       },
     });
 
-    if (!driver) throw new NotFoundException('السائق غير موجود');
+    if (!driver) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
     return driver;
   }
 
@@ -189,11 +193,15 @@ export class DriversService {
       where: { id: driverId },
     });
 
-    if (!driver) throw new NotFoundException('السائق غير موجود');
+    if (!driver) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
 
     // A busy driver cannot be switched to offline.
     if (driver.status === DriverStatus.BUSY && !isOnline) {
-      return { message: 'لا يمكن تغيير الحالة أثناء التوصيل' };
+      return {
+        message: this.i18n.t('errors.driver.status_change_during_delivery'),
+      };
     }
 
     return this.db.driver.update({
@@ -270,7 +278,9 @@ export class DriversService {
     const driver = await this.db.driver.findFirst({
       where: { id, tenantId },
     });
-    if (!driver) throw new NotFoundException('السائق غير موجود');
+    if (!driver) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
     return driver;
   }
 }

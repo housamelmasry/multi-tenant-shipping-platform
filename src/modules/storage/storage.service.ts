@@ -16,6 +16,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createS3Client } from '@config/storage.config';
+import { I18nHelper } from '@i18n/i18n.utils';
 import sharp from 'sharp';
 import * as crypto from 'crypto';
 import * as path from 'path';
@@ -80,7 +81,10 @@ export class StorageService implements OnModuleInit {
   private publicUrl: string;
   private provider: string;
 
-  constructor(private config: ConfigService) {}
+  constructor(
+    private config: ConfigService,
+    private readonly i18n: I18nHelper,
+  ) {}
 
   async onModuleInit() {
     this.provider = this.config.get('STORAGE_PROVIDER') ?? 's3';
@@ -213,7 +217,11 @@ export class StorageService implements OnModuleInit {
         format: options.format ?? 'jpeg',
       };
     } catch (error) {
-      throw new BadRequestException(`فشل في معالجة الصورة: ${error.message}`);
+      throw new BadRequestException(
+        this.i18n.t('errors.storage.image_processing_failed', {
+          args: { reason: (error as Error).message },
+        }),
+      );
     }
   }
 
@@ -221,18 +229,27 @@ export class StorageService implements OnModuleInit {
 
   private validateFile(file: Express.Multer.File): void {
     if (!file) {
-      throw new BadRequestException('لم يتم رفع أي ملف');
+      throw new BadRequestException(
+        this.i18n.t('errors.storage.no_file_uploaded'),
+      );
     }
 
     if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       throw new BadRequestException(
-        `نوع الملف غير مدعوم (${file.mimetype}). الأنواع المسموحة: JPEG, PNG, WebP`,
+        this.i18n.t('errors.storage.unsupported_file_type', {
+          args: { mime: file.mimetype, allowed: ALLOWED_MIME_TYPES.join(', ') },
+        }),
       );
     }
 
     if (file.size > MAX_FILE_SIZE) {
       throw new BadRequestException(
-        `حجم الملف كبير جداً (${this.formatSize(file.size)}). الحد الأقصى: ${this.formatSize(MAX_FILE_SIZE)}`,
+        this.i18n.t('errors.storage.file_too_large', {
+          args: {
+            size: this.formatSize(file.size),
+            max: this.formatSize(MAX_FILE_SIZE),
+          },
+        }),
       );
     }
   }

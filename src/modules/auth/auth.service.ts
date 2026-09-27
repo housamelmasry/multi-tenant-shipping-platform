@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { DatabaseService } from '@database/database.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtPayload } from '@common/types/jwt-payload.type';
+import { I18nHelper } from '@i18n/i18n.utils';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class AuthService {
   constructor(
     private db: DatabaseService,
     private jwt: JwtService,
+    private readonly i18n: I18nHelper,
   ) {}
 
   async login(dto: LoginDto) {
@@ -25,13 +27,17 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+      throw new UnauthorizedException(
+        this.i18n.t('errors.auth.invalid_credentials'),
+      );
     }
 
     // 2. Verify the password.
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
-      throw new UnauthorizedException('بيانات الدخول غير صحيحة');
+      throw new UnauthorizedException(
+        this.i18n.t('errors.auth.invalid_credentials'),
+      );
     }
 
     // 3. Generate the tokens.
@@ -57,7 +63,7 @@ export class AuthService {
     });
 
     if (!user || !user.isActive) {
-      throw new UnauthorizedException();
+      throw new UnauthorizedException(this.i18n.t('errors.auth.unauthorized'));
     }
 
     return this.generateTokens(user);
