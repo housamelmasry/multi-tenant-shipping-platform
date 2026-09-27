@@ -164,7 +164,9 @@ export class SmsService {
       },
     });
 
-    this.logger.warn(`SMS not sent because no provider is configured (log ${log.id})`);
+    this.logger.warn(
+      `SMS not sent because no provider is configured (log ${log.id})`,
+    );
     return { sent: false, id: log.id, reason: 'provider_unavailable' };
   }
 }

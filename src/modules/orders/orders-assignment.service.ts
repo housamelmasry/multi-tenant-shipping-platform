@@ -305,7 +305,8 @@ export class OrdersAssignmentService {
     maxDistanceKm: number,
     availableDrivers?: AvailableDriver[],
   ) {
-    const drivers = availableDrivers ?? (await this.getAvailableDrivers(tenantId));
+    const drivers =
+      availableDrivers ?? (await this.getAvailableDrivers(tenantId));
 
     const withDistance = drivers
       .map((d) => ({
@@ -323,7 +324,9 @@ export class OrdersAssignmentService {
     return withDistance;
   }
 
-  private async getAvailableDrivers(tenantId: string): Promise<AvailableDriver[]> {
+  private async getAvailableDrivers(
+    tenantId: string,
+  ): Promise<AvailableDriver[]> {
     const thirtyMinAgo = new Date(Date.now() - 30 * 60 * 1000);
 
     return this.db.driver.findMany({

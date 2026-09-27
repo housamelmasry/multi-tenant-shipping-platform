@@ -55,7 +55,9 @@ describe('OrdersOtpService', () => {
     const service = new OrdersOtpService(
       db as never,
       {} as never,
-      { sendDeliveryOtp: jest.fn().mockResolvedValue({ sent: false }) } as never,
+      {
+        sendDeliveryOtp: jest.fn().mockResolvedValue({ sent: false }),
+      } as never,
       {} as never,
       { t: (key: string) => key } as never,
     );

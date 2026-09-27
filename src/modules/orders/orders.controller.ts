@@ -1,11 +1,22 @@
 import {
-  Controller, Get, Post, Patch,
-  Body, Param, Query,
-  UseInterceptors, UploadedFile,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import {
-  ApiTags, ApiOperation, ApiBearerAuth,
-  ApiParam, ApiConsumes, ApiBody, ApiQuery,
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiParam,
+  ApiConsumes,
+  ApiBody,
+  ApiQuery,
 } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { OrdersService } from './orders.service';
@@ -22,7 +33,10 @@ import { Public } from '@common/decorators/public.decorator';
 import { OtpThrottle, Throttle } from '@common/decorators/throttle.decorator';
 import { UserRole } from '@common/enums';
 import { multerConfig } from '../../common/config/multer.config';
-import { ApiSuccessResponse, ApiCommonResponses } from '@common/swagger/api-responses.decorator';
+import {
+  ApiSuccessResponse,
+  ApiCommonResponses,
+} from '@common/swagger/api-responses.decorator';
 import { ApiPaginationQuery } from '@common/swagger/api-pagination.decorator';
 
 @ApiTags('الطلبات')
@@ -54,8 +68,25 @@ export class OrdersController {
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
   @ApiOperation({ summary: 'قائمة الطلبات' })
   @ApiPaginationQuery([
-    { name: 'status', required: false, enum: ['pending', 'assigned', 'picked_up', 'in_transit', 'delivered', 'failed', 'returned', 'cancelled'] },
-    { name: 'search', required: false, description: 'بحث برقم التتبع أو اسم العميل' },
+    {
+      name: 'status',
+      required: false,
+      enum: [
+        'pending',
+        'assigned',
+        'picked_up',
+        'in_transit',
+        'delivered',
+        'failed',
+        'returned',
+        'cancelled',
+      ],
+    },
+    {
+      name: 'search',
+      required: false,
+      description: 'بحث برقم التتبع أو اسم العميل',
+    },
     { name: 'dateFrom', required: false, example: '2024-01-01' },
     { name: 'dateTo', required: false, example: '2024-12-31' },
   ])
@@ -182,7 +213,11 @@ export class OrdersController {
       required: ['code'],
       properties: {
         code: { type: 'string', example: '483920', description: 'رمز التحقق' },
-        photo: { type: 'string', format: 'binary', description: 'صورة التسليم (اختياري)' },
+        photo: {
+          type: 'string',
+          format: 'binary',
+          description: 'صورة التسليم (اختياري)',
+        },
       },
     },
   })

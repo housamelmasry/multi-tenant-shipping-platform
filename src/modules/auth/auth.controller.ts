@@ -1,10 +1,5 @@
-import {
-  Controller, Post, Get, Body, UseGuards,
-} from '@nestjs/common';
-import {
-  ApiTags, ApiOperation,
-  ApiBearerAuth, ApiBody,
-} from '@nestjs/swagger';
+import { Controller, Post, Get, Body, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -12,7 +7,10 @@ import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
 import { AuthThrottle } from '@common/decorators/throttle.decorator';
-import { ApiSuccessResponse, ApiCommonResponses } from '@common/swagger/api-responses.decorator';
+import {
+  ApiSuccessResponse,
+  ApiCommonResponses,
+} from '@common/swagger/api-responses.decorator';
 
 @ApiTags('المصادقة')
 @Controller('auth')

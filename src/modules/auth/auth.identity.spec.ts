@@ -9,7 +9,9 @@ describe('authentication identity', () => {
       me: jest.fn().mockResolvedValue({ id: 'user-1' }),
       refreshToken: jest.fn().mockResolvedValue({ accessToken: 'access' }),
     };
-    const controller = new AuthController(authService as unknown as AuthService);
+    const controller = new AuthController(
+      authService as unknown as AuthService,
+    );
 
     await controller.me('user-1');
     await controller.refresh({ refreshToken: 'refresh-token' });
@@ -21,7 +23,9 @@ describe('authentication identity', () => {
   it('rejects access tokens on the refresh path', async () => {
     const db = { user: { findUnique: jest.fn() } };
     const jwt = {
-      verifyAsync: jest.fn().mockResolvedValue({ sub: 'user-1', tokenType: 'access' }),
+      verifyAsync: jest
+        .fn()
+        .mockResolvedValue({ sub: 'user-1', tokenType: 'access' }),
       signAsync: jest.fn(),
     };
     const service = new AuthService(

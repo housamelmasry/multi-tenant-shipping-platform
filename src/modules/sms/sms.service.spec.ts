@@ -25,7 +25,10 @@ describe('SmsService', () => {
       lang: 'en',
     });
 
-    expect(result).toMatchObject({ sent: false, reason: 'provider_unavailable' });
+    expect(result).toMatchObject({
+      sent: false,
+      reason: 'provider_unavailable',
+    });
     expect(db.smsLog.update).toHaveBeenCalledWith({
       where: { id: 'sms-log-1' },
       data: expect.objectContaining({ status: 'failed' }),
