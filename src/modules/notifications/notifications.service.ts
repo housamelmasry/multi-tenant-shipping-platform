@@ -244,37 +244,48 @@ export class NotificationsService implements OnModuleInit {
       };
     }
 
-    // Multicast sends to a group in one more efficient batch.
-    const tokens = drivers.map((d) => d.fcmToken!);
+    let sent = 0;
+    let failed = 0;
 
-    const response = await getFirebaseMessaging().sendEachForMulticast({
-      tokens,
-      notification: { title: dto.title, body: dto.body },
-      data: { type: NotificationType.ANNOUNCEMENT },
-      android: { priority: 'high' },
-    });
+    for (let offset = 0; offset < drivers.length; offset += 500) {
+      const batch = drivers.slice(offset, offset + 500);
+      let responses: boolean[];
+      try {
+        const response = await getFirebaseMessaging().sendEachForMulticast({
+          tokens: batch.map((driver) => driver.fcmToken!),
+          notification: { title: dto.title, body: dto.body },
+          data: { type: NotificationType.ANNOUNCEMENT },
+          android: { priority: 'high' },
+        });
+        responses = response.responses.map((item) => item.success);
+      } catch (error) {
+        this.logger.error(`Announcement batch failed: ${error.message}`);
+        responses = batch.map(() => false);
+      }
 
-    // Save the record to the database.
-    await this.db.notification.createMany({
-      data: drivers.map((driver) => ({
-        tenantId,
-        driverId: driver.id,
-        type: NotificationType.ANNOUNCEMENT,
-        title: dto.title,
-        body: dto.body,
-        status: 'SENT',
-        sentAt: new Date(),
-      })),
-    });
+      const sentAt = new Date();
+      sent += responses.filter(Boolean).length;
+      failed += responses.length - responses.filter(Boolean).length;
 
-    this.logger.log(
-      `Announcement sent: ${response.successCount} success, ${response.failureCount} failed`,
-    );
+      await this.db.notification.createMany({
+        data: batch.map((driver, index) => ({
+          tenantId,
+          driverId: driver.id,
+          type: NotificationType.ANNOUNCEMENT,
+          title: dto.title,
+          body: dto.body,
+          status: responses[index] ? 'SENT' : 'FAILED',
+          sentAt: responses[index] ? sentAt : null,
+        })),
+      });
+    }
+
+    this.logger.log(`Announcement sent: ${sent} success, ${failed} failed`);
 
     return {
       total: drivers.length,
-      sent: response.successCount,
-      failed: response.failureCount,
+      sent,
+      failed,
     };
   }
 

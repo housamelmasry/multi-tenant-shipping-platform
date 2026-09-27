@@ -7,6 +7,7 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { Public } from '@common/decorators/public.decorator';
@@ -38,8 +39,8 @@ export class AuthController {
   @ApiOperation({ summary: 'تجديد الـ Access Token' })
   @ApiBearerAuth('JWT')
   @ApiCommonResponses()
-  refresh(@GetCurrentUser('sub') userId: string) {
-    return this.authService.refreshToken(userId);
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto.refreshToken);
   }
 
   @Get('me')
@@ -47,7 +48,7 @@ export class AuthController {
   @ApiBearerAuth('JWT')
   @ApiSuccessResponse('بيانات المستخدم')
   @ApiCommonResponses()
-  me(@GetCurrentUser('sub') userId: string) {
+  me(@GetCurrentUser('id') userId: string) {
     return this.authService.me(userId);
   }
 }

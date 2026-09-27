@@ -3,6 +3,7 @@ import {
   Injectable,
   BadRequestException,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { DatabaseService } from '@database/database.service';
 import { OrderStatus, DriverStatus } from '@common/enums';
@@ -52,7 +53,7 @@ export class OrdersOtpService {
       data: { otpCode, otpExpiresAt },
     });
 
-    await this.smsService.sendDeliveryOtp({
+    const result = await this.smsService.sendDeliveryOtp({
       phone: order.recipientPhone,
       recipientName: order.recipientName,
       trackingCode: order.trackingCode,
@@ -62,6 +63,16 @@ export class OrdersOtpService {
       orderId,
       lang: order.recipientLang,
     });
+
+    if (!result.sent) {
+      await this.db.order.updateMany({
+        where: { id: orderId, otpCode },
+        data: { otpCode: null, otpExpiresAt: null },
+      });
+      throw new ServiceUnavailableException(
+        this.i18n.t('errors.sms.provider_unavailable'),
+      );
+    }
 
     return { message: this.i18n.t('errors.order.otp_sent') };
   }
@@ -85,6 +96,12 @@ export class OrdersOtpService {
     if (order.driverId !== driverId) {
       throw new BadRequestException(
         this.i18n.t('errors.order.not_assigned_to_you'),
+      );
+    }
+
+    if (order.status !== OrderStatus.IN_TRANSIT) {
+      throw new BadRequestException(
+        this.i18n.t('errors.order.not_in_delivery_state'),
       );
     }
 
@@ -123,8 +140,15 @@ export class OrdersOtpService {
 
     // ✅ A valid OTP completes the delivery.
     const updatedOrder = await this.db.$transaction(async (tx) => {
-      const updated = await tx.order.update({
-        where: { id: orderId },
+      const result = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          tenantId,
+          driverId,
+          status: OrderStatus.IN_TRANSIT,
+          otpCode: code,
+          otpExpiresAt: { gt: new Date() },
+        },
         data: {
           status: OrderStatus.DELIVERED,
           otpCode: null, // Clear the OTP after use.
@@ -134,6 +158,16 @@ export class OrdersOtpService {
           deliveryPhoto: deliveryPhotoUrl,
           deliveryPhotoKey,
         },
+      });
+
+      if (result.count !== 1) {
+        throw new BadRequestException(
+          this.i18n.t('errors.order.not_in_delivery_state'),
+        );
+      }
+
+      const updated = await tx.order.findUniqueOrThrow({
+        where: { id: orderId },
       });
 
       // Release the driver.

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { DatabaseService } from '@database/database.service';
 import { CreateReturnDto } from './dto/create-return.dto';
@@ -13,6 +14,7 @@ import { QueryReturnsDto } from './dto/query-returns.dto';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { SmsService } from '@modules/sms/sms.service';
+import { StorageService } from '@modules/storage/storage.service';
 import { I18nHelper, withLang } from '@i18n/i18n.utils';
 import { I18nContext } from 'nestjs-i18n';
 import {
@@ -30,6 +32,7 @@ export class ReturnsService {
     private webhooksService: WebhooksService,
     private notificationsService: NotificationsService,
     private smsService: SmsService,
+    private storageService: StorageService,
     private readonly i18n: I18nHelper,
   ) {}
 
@@ -58,26 +61,42 @@ export class ReturnsService {
       );
     }
 
-    // Check that no open return request already exists.
-    const existingReturn = await this.db.returnRequest.findFirst({
-      where: {
-        orderId: dto.orderId,
-        status: { notIn: ['cancelled', 'returned'] },
-      },
-    });
-
-    if (existingReturn) {
-      throw new BadRequestException(
-        this.i18n.t('errors.return.already_exists'),
-      );
-    }
-
     // Create the return request and update the original order status.
     const returnRequest = await this.db.$transaction(async (tx) => {
+      const currentOrder = await tx.order.findFirst({
+        where: { id: dto.orderId, tenantId },
+        select: { status: true },
+      });
+
+      if (
+        !currentOrder ||
+        !returnableStatuses.includes(currentOrder.status as OrderStatus)
+      ) {
+        throw new BadRequestException(
+          this.i18n.t('errors.return.cannot_create_in_current_status'),
+        );
+      }
+
+      const transition = await tx.order.updateMany({
+        where: {
+          id: dto.orderId,
+          tenantId,
+          status: currentOrder.status,
+        },
+        data: { status: OrderStatus.RETURNED },
+      });
+
+      if (transition.count !== 1) {
+        throw new BadRequestException(
+          this.i18n.t('errors.return.cannot_create_in_current_status'),
+        );
+      }
+
       const newReturn = await tx.returnRequest.create({
         data: {
           orderId: dto.orderId,
           tenantId,
+          originalOrderStatus: currentOrder.status,
           reason: dto.reason,
           notes: dto.notes,
           requestedBy: userId,
@@ -93,12 +112,6 @@ export class ReturnsService {
           ),
           status: ReturnStatus.PENDING,
         },
-      });
-
-      // Update the original order status.
-      await tx.order.update({
-        where: { id: dto.orderId },
-        data: { status: OrderStatus.RETURNED },
       });
 
       // Add an entry to the return history.
@@ -366,13 +379,23 @@ export class ReturnsService {
 
     // Send an OTP to the warehouse contact, in the warehouse's language
     // (not the end customer's — see ReturnRequest.warehouseLang).
-    await this.smsService.sendReturnOtp({
+    const result = await this.smsService.sendReturnOtp({
       phone: returnRequest.warehousePhone,
       orderId: returnRequest.orderId,
       code: otpCode,
       tenantId,
       lang: returnRequest.warehouseLang,
     });
+
+    if (!result.sent) {
+      await this.db.returnRequest.updateMany({
+        where: { id: returnId, otpCode },
+        data: { otpCode: null, otpExpiresAt: null },
+      });
+      throw new ServiceUnavailableException(
+        this.i18n.t('errors.sms.provider_unavailable'),
+      );
+    }
 
     return { message: this.i18n.t('errors.return.otp_sent') };
   }
@@ -382,7 +405,7 @@ export class ReturnsService {
     tenantId: string,
     driverId: string,
     code: string,
-    productPhoto?: string,
+    productPhoto?: Express.Multer.File,
   ) {
     const returnRequest = await this.db.returnRequest.findFirst({
       where: { id: returnId, tenantId },
@@ -399,6 +422,12 @@ export class ReturnsService {
       );
     }
 
+    if (returnRequest.status !== ReturnStatus.IN_TRANSIT) {
+      throw new BadRequestException(
+        this.i18n.t('errors.return.not_in_transit_to_warehouse'),
+      );
+    }
+
     if (!returnRequest.otpCode || !returnRequest.otpExpiresAt) {
       throw new BadRequestException(this.i18n.t('errors.return.otp_required'));
     }
@@ -411,18 +440,49 @@ export class ReturnsService {
       throw new BadRequestException(this.i18n.t('errors.return.otp_invalid'));
     }
 
+    let productPhotoUrl: string | undefined;
+    let productPhotoKey: string | undefined;
+    if (productPhoto) {
+      const uploaded = await this.storageService.uploadPhoto(
+        productPhoto,
+        'return-photos',
+        tenantId,
+        { returnId, driverId, type: 'return-proof' },
+      );
+      productPhotoUrl = uploaded.url;
+      productPhotoKey = uploaded.key;
+    }
+
     // ✅ Complete the return.
     const updatedReturn = await this.db.$transaction(async (tx) => {
-      const updated = await tx.returnRequest.update({
-        where: { id: returnId },
+      const result = await tx.returnRequest.updateMany({
+        where: {
+          id: returnId,
+          tenantId,
+          driverId,
+          status: ReturnStatus.IN_TRANSIT,
+          otpCode: code,
+          otpExpiresAt: { gt: new Date() },
+        },
         data: {
           status: ReturnStatus.RETURNED,
           otpCode: null,
           otpExpiresAt: null,
           otpVerifiedAt: new Date(),
           returnedAt: new Date(),
-          productPhoto,
+          productPhoto: productPhotoUrl,
+          productPhotoKey,
         },
+      });
+
+      if (result.count !== 1) {
+        throw new BadRequestException(
+          this.i18n.t('errors.return.not_in_transit_to_warehouse'),
+        );
+      }
+
+      const updated = await tx.returnRequest.findUniqueOrThrow({
+        where: { id: returnId },
       });
 
       // Release the driver.
@@ -475,10 +535,20 @@ export class ReturnsService {
     }
 
     await this.db.$transaction(async (tx) => {
-      await tx.returnRequest.update({
-        where: { id: returnId },
+      const result = await tx.returnRequest.updateMany({
+        where: {
+          id: returnId,
+          tenantId,
+          status: { in: cancellableStatuses },
+        },
         data: { status: ReturnStatus.CANCELLED },
       });
+
+      if (result.count !== 1) {
+        throw new BadRequestException(
+          this.i18n.t('errors.return.cannot_cancel_in_current_status'),
+        );
+      }
 
       // Release the assigned driver, if any.
       if (returnRequest.driverId) {
@@ -491,16 +561,22 @@ export class ReturnsService {
       // Restore the original order to its previous status.
       await tx.order.update({
         where: { id: returnRequest.orderId },
-        data: { status: OrderStatus.FAILED },
+        data: {
+          status:
+            (returnRequest.originalOrderStatus as OrderStatus | null) ??
+            OrderStatus.FAILED,
+        },
       });
-    });
 
-    await this.logStatusChange({
-      returnRequestId: returnId,
-      fromStatus: returnRequest.status as ReturnStatus,
-      toStatus: ReturnStatus.CANCELLED,
-      changedByType: 'user',
-      changedById: userId,
+      await tx.returnStatusHistory.create({
+        data: {
+          returnRequestId: returnId,
+          fromStatus: returnRequest.status,
+          toStatus: ReturnStatus.CANCELLED,
+          changedByType: 'user',
+          changedById: userId,
+        },
+      });
     });
 
     return { message: this.i18n.t('errors.return.cancelled') };

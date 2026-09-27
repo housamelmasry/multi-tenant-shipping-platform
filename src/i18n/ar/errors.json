@@ -131,5 +131,11 @@
     "updated": "تم التحديث",
     "all_marked_read": "تم تحديد الكل كمقروء",
     "no_drivers_to_notify": "لا يوجد سائقون لإرسال الإشعار إليهم"
+  },
+  "webhook": {
+    "public_url_required": "يجب أن يشير عنوان Webhook إلى خادم عام باستخدام HTTP أو HTTPS"
+  },
+  "sms": {
+    "provider_unavailable": "خدمة الرسائل النصية غير متاحة حالياً"
   }
 }

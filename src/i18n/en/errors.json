@@ -131,5 +131,11 @@
     "updated": "Updated",
     "all_marked_read": "All notifications marked as read",
     "no_drivers_to_notify": "There are no drivers to send this notification to"
+  },
+  "webhook": {
+    "public_url_required": "The webhook URL must point to a public HTTP or HTTPS server"
+  },
+  "sms": {
+    "provider_unavailable": "SMS delivery is currently unavailable"
   }
 }

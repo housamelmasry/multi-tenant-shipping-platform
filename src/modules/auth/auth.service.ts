@@ -26,7 +26,7 @@ export class AuthService {
       include: { tenant: true },
     });
 
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || (user.tenant && !user.tenant.isActive)) {
       throw new UnauthorizedException(
         this.i18n.t('errors.auth.invalid_credentials'),
       );
@@ -57,12 +57,24 @@ export class AuthService {
     };
   }
 
-  async refreshToken(userId: string) {
+  async refreshToken(refreshToken: string) {
+    let payload: JwtPayload;
+    try {
+      payload = await this.jwt.verifyAsync<JwtPayload>(refreshToken);
+    } catch {
+      throw new UnauthorizedException(this.i18n.t('errors.auth.unauthorized'));
+    }
+
+    if (payload.tokenType !== 'refresh') {
+      throw new UnauthorizedException(this.i18n.t('errors.auth.unauthorized'));
+    }
+
     const user = await this.db.user.findUnique({
-      where: { id: userId },
+      where: { id: payload.sub },
+      include: { tenant: true },
     });
 
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || (user.tenant && !user.tenant.isActive)) {
       throw new UnauthorizedException(this.i18n.t('errors.auth.unauthorized'));
     }
 
@@ -94,8 +106,8 @@ export class AuthService {
     };
 
     const [accessToken, refreshToken] = await Promise.all([
-      this.jwt.signAsync(payload, { expiresIn: '15m' }),
-      this.jwt.signAsync(payload, { expiresIn: '7d' }),
+      this.jwt.signAsync({ ...payload, tokenType: 'access' }, { expiresIn: '15m' }),
+      this.jwt.signAsync({ ...payload, tokenType: 'refresh' }, { expiresIn: '7d' }),
     ]);
 
     return { accessToken, refreshToken };

@@ -145,7 +145,7 @@ export class OrdersController {
   updateStatus(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') driverId: string,
+    @GetCurrentUser('driverId') driverId: string,
     @Body() dto: UpdateOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, tenantId, dto, driverId);
@@ -162,7 +162,7 @@ export class OrdersController {
   sendOtp(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') driverId: string,
+    @GetCurrentUser('driverId') driverId: string,
   ) {
     return this.otpService.generateAndSend(id, tenantId, driverId);
   }
@@ -190,7 +190,7 @@ export class OrdersController {
   verifyOtp(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') driverId: string,
+    @GetCurrentUser('driverId') driverId: string,
     @Body() dto: VerifyOtpDto,
     @UploadedFile() photo?: Express.Multer.File,
   ) {

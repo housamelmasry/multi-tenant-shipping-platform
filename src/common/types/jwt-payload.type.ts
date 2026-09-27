@@ -4,4 +4,5 @@ export type JwtPayload = {
   email: string;
   role: string;
   tenantId: string | null;
+  tokenType?: 'access' | 'refresh';
 };

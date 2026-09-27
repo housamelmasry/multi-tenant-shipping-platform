@@ -1,10 +1,13 @@
 import {
-  Controller, Get, Post, Patch,
-  Body, Param, Query,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
 } from '@nestjs/common';
-import {
-  ApiTags, ApiOperation, ApiBearerAuth, ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { DriversService } from './drivers.service';
 import { CreateDriverDto } from './dto/create-driver.dto';
 import { UpdateDriverDto } from './dto/update-driver.dto';
@@ -15,7 +18,10 @@ import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { LocationUpdateThrottle } from '@common/decorators/throttle.decorator';
 import { UserRole } from '@common/enums';
-import { ApiSuccessResponse, ApiCommonResponses } from '@common/swagger/api-responses.decorator';
+import {
+  ApiSuccessResponse,
+  ApiCommonResponses,
+} from '@common/swagger/api-responses.decorator';
 
 @ApiTags('السائقون')
 @ApiBearerAuth('JWT')

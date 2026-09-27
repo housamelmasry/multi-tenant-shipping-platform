@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bull';
 import { Queue } from 'bull';
@@ -12,6 +13,7 @@ import { WebhookJobData } from './types/webhook-job.type';
 import { I18nHelper } from '@i18n/i18n.utils';
 import { I18nContext } from 'nestjs-i18n';
 import * as crypto from 'crypto';
+import { resolvePublicWebhookUrl } from './webhook-target.util';
 
 export const WEBHOOK_QUEUE = 'webhooks';
 
@@ -26,6 +28,14 @@ export class WebhooksService {
   // ─── CRUD ─────────────────────────────────────────────
 
   async create(tenantId: string, dto: CreateWebhookDto) {
+    try {
+      await resolvePublicWebhookUrl(dto.url);
+    } catch {
+      throw new BadRequestException(
+        this.i18n.t('errors.webhook.public_url_required'),
+      );
+    }
+
     // Each tenant can register a URL only once.
     const existing = await this.db.webhook.findFirst({
       where: { tenantId, url: dto.url },

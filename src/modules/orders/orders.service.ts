@@ -203,34 +203,59 @@ export class OrdersService {
       throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
     }
 
-    if (driver.status === DriverStatus.BUSY) {
+    if (driver.status !== DriverStatus.AVAILABLE) {
       throw new BadRequestException(this.i18n.t('errors.driver.busy'));
     }
 
     // Transaction: assign the driver and update their status.
-    const [updatedOrder] = await this.db.$transaction([
-      this.db.order.update({
-        where: { id: orderId },
+    const updatedOrder = await this.db.$transaction(async (tx) => {
+      const claimedDriver = await tx.driver.updateMany({
+        where: {
+          id: dto.driverId,
+          tenantId,
+          isActive: true,
+          status: DriverStatus.AVAILABLE,
+        },
+        data: { status: DriverStatus.BUSY },
+      });
+
+      if (claimedDriver.count !== 1) {
+        throw new BadRequestException(this.i18n.t('errors.driver.busy'));
+      }
+
+      const claimedOrder = await tx.order.updateMany({
+        where: {
+          id: orderId,
+          tenantId,
+          status: OrderStatus.PENDING,
+          driverId: null,
+        },
         data: {
           driverId: dto.driverId,
           status: OrderStatus.ASSIGNED,
         },
-      }),
-      this.db.driver.update({
-        where: { id: dto.driverId },
-        data: { status: DriverStatus.BUSY },
-      }),
-    ]);
+      });
 
-    await this.logStatusChange({
-      orderId,
-      fromStatus: OrderStatus.PENDING,
-      toStatus: OrderStatus.ASSIGNED,
-      changedByType: 'user',
-      changedById: userId,
-      note: this.i18n.t('errors.order.history_driver_assigned', {
-        args: { name: driver.name },
-      }),
+      if (claimedOrder.count !== 1) {
+        throw new BadRequestException(
+          this.i18n.t('errors.order.cannot_assign_in_current_status'),
+        );
+      }
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId,
+          fromStatus: OrderStatus.PENDING,
+          toStatus: OrderStatus.ASSIGNED,
+          changedByType: 'user',
+          changedById: userId,
+          note: this.i18n.t('errors.order.history_driver_assigned', {
+            args: { name: driver.name },
+          }),
+        },
+      });
+
+      return tx.order.findUniqueOrThrow({ where: { id: orderId } });
     });
 
     // Send the webhook notification.

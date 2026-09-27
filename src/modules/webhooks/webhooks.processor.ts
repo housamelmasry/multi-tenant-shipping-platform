@@ -12,6 +12,10 @@ import { WebhookJobData } from './types/webhook-job.type';
 import { WEBHOOK_QUEUE } from './webhooks.service';
 import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
+import {
+  createPinnedWebhookAgents,
+  resolvePublicWebhookUrl,
+} from './webhook-target.util';
 
 @Processor(WEBHOOK_QUEUE)
 export class WebhooksProcessor {
@@ -27,10 +31,13 @@ export class WebhooksProcessor {
     // Generate the signature for request verification.
     const signature = this.generateSignature(payload, secret);
     const timestamp = Date.now().toString();
+    let agents: ReturnType<typeof createPinnedWebhookAgents> | undefined;
 
     try {
+      const target = await resolvePublicWebhookUrl(url);
+      agents = createPinnedWebhookAgents(target.addresses);
       const response = await firstValueFrom(
-        this.http.post(url, payload, {
+        this.http.post(target.url.toString(), payload, {
           headers: {
             'Content-Type': 'application/json',
             'X-Webhook-Event': event,
@@ -39,6 +46,10 @@ export class WebhooksProcessor {
             'X-Webhook-Delivery-Id': webhookLogId,
           },
           timeout: 10000, // Maximum timeout: 10 seconds.
+          maxRedirects: 0,
+          proxy: false,
+          httpAgent: agents.httpAgent,
+          httpsAgent: agents.httpsAgent,
         }),
       );
 
@@ -78,6 +89,9 @@ export class WebhooksProcessor {
 
       // Rethrow the error so Bull retries the job.
       throw error;
+    } finally {
+      agents?.httpAgent.destroy();
+      agents?.httpsAgent.destroy();
     }
   }
 

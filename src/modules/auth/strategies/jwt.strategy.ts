@@ -29,10 +29,19 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         role: true,
         tenantId: true,
         isActive: true,
+        driverId: true,
+        driver: { select: { isActive: true } },
+        tenant: { select: { isActive: true } },
       },
     });
 
-    if (!user || !user.isActive) {
+    if (
+      !user ||
+      !user.isActive ||
+      (user.tenant && !user.tenant.isActive) ||
+      (user.role === 'TENANT_STAFF' && !user.driver?.isActive) ||
+      payload.tokenType === 'refresh'
+    ) {
       throw new UnauthorizedException(
         this.i18n.t('errors.auth.user_not_found_or_inactive'),
       );

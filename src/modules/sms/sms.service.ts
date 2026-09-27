@@ -155,29 +155,16 @@ export class SmsService {
       },
     });
 
-    try {
-      // TODO: Replace this with a real SMS provider.
-      this.logger.log(`📱 SMS to ${params.phone}: ${params.message}`);
+    const reason = 'SMS provider is not configured';
+    await this.db.smsLog.update({
+      where: { id: log.id },
+      data: {
+        status: 'failed',
+        responseBody: reason,
+      },
+    });
 
-      await this.db.smsLog.update({
-        where: { id: log.id },
-        data: {
-          status: 'sent',
-          sentAt: new Date(),
-        },
-      });
-
-      return { sent: true, id: log.id };
-    } catch (error: any) {
-      await this.db.smsLog.update({
-        where: { id: log.id },
-        data: {
-          status: 'failed',
-          responseBody: error.message,
-        },
-      });
-
-      return { sent: false, id: log.id, error: error.message };
-    }
+    this.logger.warn(`SMS not sent because no provider is configured (log ${log.id})`);
+    return { sent: false, id: log.id, reason: 'provider_unavailable' };
   }
 }

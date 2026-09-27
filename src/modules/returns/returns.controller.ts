@@ -16,6 +16,7 @@ import { CreateReturnDto } from './dto/create-return.dto';
 import { AssignReturnDriverDto } from './dto/assign-return-driver.dto';
 import { UpdateReturnStatusDto } from './dto/update-return-status.dto';
 import { VerifyReturnOtpDto } from './dto/verify-return-otp.dto';
+import { multerConfig } from '@common/config/multer.config';
 import { QueryReturnsDto } from './dto/query-returns.dto';
 import { Roles } from '@common/decorators/roles.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
@@ -83,7 +84,7 @@ export class ReturnsController {
   updateStatus(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') driverId: string,
+    @GetCurrentUser('driverId') driverId: string,
     @Body() dto: UpdateReturnStatusDto,
   ) {
     return this.returnsService.updateStatus(id, tenantId, dto, driverId);
@@ -94,28 +95,27 @@ export class ReturnsController {
   sendOtp(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') driverId: string,
+    @GetCurrentUser('driverId') driverId: string,
   ) {
     return this.returnsService.generateWarehouseOtp(id, tenantId, driverId);
   }
 
   @Post(':id/otp/verify')
   @Roles(UserRole.TENANT_STAFF)
-  @UseInterceptors(FileInterceptor('photo'))
+  @UseInterceptors(FileInterceptor('photo', multerConfig))
   verifyOtp(
     @Param('id') id: string,
     @GetCurrentUser('tenantId') tenantId: string,
-    @GetCurrentUser('id') driverId: string,
+    @GetCurrentUser('driverId') driverId: string,
     @Body() dto: VerifyReturnOtpDto,
     @UploadedFile() photo?: Express.Multer.File,
   ) {
-    const photoUrl = photo ? `uploads/${photo.filename}` : undefined;
     return this.returnsService.verifyWarehouseOtp(
       id,
       tenantId,
       driverId,
       dto.code,
-      photoUrl,
+      photo,
     );
   }
 }

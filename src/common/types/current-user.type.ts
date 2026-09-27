@@ -4,4 +4,5 @@ export type CurrentUser = {
   email: string;
   role: string;
   tenantId: string | null;
+  driverId?: string | null;
 };

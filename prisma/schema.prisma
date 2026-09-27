@@ -163,7 +163,7 @@ model WebhookLog {
 
 model ReturnRequest {
   id              String   @id @default(uuid())
-  orderId         String   @unique @map("order_id")
+  orderId         String   @map("order_id")
   tenantId        String   @map("tenant_id")
   driverId        String?  @map("driver_id")
 
@@ -182,6 +182,7 @@ model ReturnRequest {
   warehouseLang   String   @default("ar") @map("warehouse_lang")
 
   status          String   @default("pending")
+  originalOrderStatus String? @map("original_order_status")
 
   productPhoto    String?  @map("product_photo")
   productPhotoKey String?  @map("product_photo_key")
@@ -200,6 +201,7 @@ model ReturnRequest {
   statusHistory  ReturnStatusHistory[]
 
   @@index([tenantId, status])
+  @@index([orderId])
   @@map("return_requests")
 }
 
