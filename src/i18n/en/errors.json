@@ -1,1 +1,13 @@
-{}
+{
+	"return": {
+		"invalid_transition": "Cannot transition from {from} to {to}",
+		"status": {
+			"pending": "Awaiting driver",
+			"assigned": "Assigned",
+			"picked_up": "Picked up from customer",
+			"in_transit": "In transit to warehouse",
+			"returned": "Returned to warehouse",
+			"cancelled": "Canceled"
+		}
+	}
+}

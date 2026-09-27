@@ -11,16 +11,6 @@ export const ReturnStatus = {
 export type ReturnStatus = (typeof ReturnStatus)[keyof typeof ReturnStatus];
 
 export const ReturnStatusMeta = {
-  label: (status: ReturnStatus): string =>
-    ({
-      pending: 'بانتظار السائق',
-      assigned: 'تم التعيين',
-      picked_up: 'تم الاستلام من العميل',
-      in_transit: 'في الطريق للمستودع',
-      returned: 'تم الإرجاع للمستودع',
-      cancelled: 'ملغي',
-    })[status],
-
   allowedTransitions: (status: ReturnStatus): ReturnStatus[] =>
     ({
       pending: [ReturnStatus.ASSIGNED, ReturnStatus.CANCELLED],

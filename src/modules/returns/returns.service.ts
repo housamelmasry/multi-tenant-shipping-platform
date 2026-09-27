@@ -13,6 +13,7 @@ import { QueryReturnsDto } from './dto/query-returns.dto';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { SmsService } from '@modules/sms/sms.service';
+import { I18nContext } from 'nestjs-i18n';
 import {
   ReturnStatus,
   ReturnStatusMeta,
@@ -278,8 +279,16 @@ export class ReturnsService {
     );
 
     if (!allowedTransitions.includes(dto.status)) {
+      const i18n = I18nContext.current();
+      const from =
+        i18n?.t(`errors.return.status.${returnRequest.status}`) ??
+        returnRequest.status;
+      const to =
+        i18n?.t(`errors.return.status.${dto.status}`) ?? dto.status;
+
       throw new BadRequestException(
-        `لا يمكن الانتقال من ${ReturnStatusMeta.label(returnRequest.status as ReturnStatus)} إلى ${ReturnStatusMeta.label(dto.status)}`,
+        i18n?.t('errors.return.invalid_transition', { args: { from, to } }) ??
+          `Cannot transition from ${from} to ${to}`,
       );
     }
 

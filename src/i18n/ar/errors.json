@@ -9,5 +9,16 @@
     "invalid_transition": "لا يمكن الانتقال من {from} إلى {to}",
     "otp_expired": "انتهت صلاحية رمز التحقق",
     "otp_invalid": "رمز التحقق غير صحيح"
+  },
+  "return": {
+    "invalid_transition": "لا يمكن الانتقال من {from} إلى {to}",
+    "status": {
+      "pending": "بانتظار السائق",
+      "assigned": "تم التعيين",
+      "picked_up": "تم الاستلام من العميل",
+      "in_transit": "في الطريق للمستودع",
+      "returned": "تم الإرجاع للمستودع",
+      "cancelled": "ملغي"
+    }
   }
 }
