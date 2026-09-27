@@ -283,8 +283,7 @@ export class ReturnsService {
       const from =
         i18n?.t(`errors.return.status.${returnRequest.status}`) ??
         returnRequest.status;
-      const to =
-        i18n?.t(`errors.return.status.${dto.status}`) ?? dto.status;
+      const to = i18n?.t(`errors.return.status.${dto.status}`) ?? dto.status;
 
       throw new BadRequestException(
         i18n?.t('errors.return.invalid_transition', { args: { from, to } }) ??
