@@ -10,7 +10,7 @@ export class QueryOrdersDto {
 
   @IsOptional()
   @IsString()
-  search?: string; // tracking code أو external ref
+  search?: string; // Tracking code or external reference.
 
   @IsOptional()
   @IsString()

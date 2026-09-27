@@ -11,14 +11,14 @@ SmsService.sendDeliveryOtp()
 │
 ▼
 buildMessage('otp.delivery', params, 'ar')
-= "مرحباً فاطمة،
-رمز تأكيد استلام طلبك (SHP-A3F9) هو:
-483920
-صالح لمدة 10 دقائق
-متجر الرياض"
+= "Hello Demo Recipient,
+Your delivery confirmation code for order SHP-DEMO0001 is:
+000000
+Valid for 10 minutes
+Demo Store"
 │
 ▼
-normalizePhone('+966501234567')
+normalizePhone('+966500000001')
 │
 ▼
 createSmsLog() → status: pending
@@ -34,7 +34,7 @@ cost: 0.05 ريال
 │
 ▼
 📱 العميل يستلم SMS
-"483920"
+"000000"
 │
 ▼
 السائق يدخل الرمز → تم التسليم ✅

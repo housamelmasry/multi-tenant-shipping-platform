@@ -1,5 +1,5 @@
 // src/modules/auth/strategies/api-key.strategy.ts
-// للشركات اللي بتربط نظامها الخارجي
+// Authenticate external company integrations.
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { HeaderAPIKeyStrategy } from 'passport-headerapikey';
@@ -26,10 +26,10 @@ export class ApiKeyStrategy extends PassportStrategy(
       throw new UnauthorizedException('API Key غير صالح');
     }
 
-    // بيرجع tenant بدل user
+    // Return the tenant instead of the user.
     return { tenantId: tenant.id, isTenant: true };
   }
 }
 
-// تثبيت المكتبة
+// Install the package.
 // npm install passport-headerapikey

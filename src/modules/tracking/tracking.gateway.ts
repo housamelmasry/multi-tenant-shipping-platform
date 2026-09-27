@@ -22,7 +22,7 @@ export class TrackingGateway
   @WebSocketServer()
   server: Server;
 
-  // map لتتبع الـ connections
+  // Map active connections.
   private connectedClients = new Map<string, string>(); // socketId → tenantId
 
   constructor(
@@ -34,7 +34,7 @@ export class TrackingGateway
 
   async handleConnection(client: Socket) {
     try {
-      // التحقق من الـ JWT عند الاتصال
+      // Verify the JWT when the client connects.
       const token =
         client.handshake.auth.token ??
         client.handshake.headers.authorization?.split(' ')[1];
@@ -43,17 +43,17 @@ export class TrackingGateway
 
       const payload = this.jwtService.verify(token);
 
-      // حفظ الـ tenantId
+      // Store the tenant ID.
       this.connectedClients.set(client.id, payload.tenantId);
 
-      // انضمام لـ room خاصة بالـ tenant
+      // Join the tenant's room.
       client.join(`tenant:${payload.tenantId}`);
 
       console.log(
         `✅ Client connected: ${client.id} | Tenant: ${payload.tenantId}`,
       );
 
-      // إرسال البيانات الأولية
+      // Send the initial data.
       const drivers = await this.trackingService.getActiveDriversLocations(
         payload.tenantId,
       );
@@ -76,7 +76,7 @@ export class TrackingGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() data: { driverId: string },
   ) {
-    // الـ admin يشترك لتحديثات سائق معين
+    // Subscribe the admin to updates for a specific driver.
     client.join(`driver:${data.driverId}`);
     client.emit('subscribed', { driverId: data.driverId });
   }
@@ -89,7 +89,7 @@ export class TrackingGateway
     client.leave(`driver:${data.driverId}`);
   }
 
-  // ─── Emit to Clients (يُستدعى من DriversService) ──────
+  // ─── Emit to clients (called by DriversService) ───────
 
   emitDriverLocationUpdate(
     tenantId: string,
@@ -102,12 +102,12 @@ export class TrackingGateway
       lastLocationAt: Date;
     },
   ) {
-    // إرسال لكل الـ admins بتاعين هذا الـ tenant
+    // Send updates to all admins for this tenant.
     this.server
       .to(`tenant:${tenantId}`)
       .emit('driver:location_updated', driverData);
 
-    // إرسال لمن اشترك في هذا السائق تحديداً
+    // Send updates to clients subscribed to this specific driver.
     this.server
       .to(`driver:${driverData.id}`)
       .emit('driver:location_updated', driverData);

@@ -48,13 +48,13 @@ export class NotificationsService implements OnModuleInit {
   }) {
     const { driverId, tenantId, type, data = {}, lang = 'ar' } = params;
 
-    // جلب الـ FCM token
+    // Get the FCM token.
     const driver = await this.db.driver.findUnique({
       where: { id: driverId },
       select: { fcmToken: true, fcmTokenAt: true, name: true },
     });
 
-    // إنشاء الـ notification record
+    // Create the notification record.
     const title = NotificationMeta.title(type, lang);
     const body = this.buildNotificationBody(type, data, lang);
 
@@ -70,7 +70,7 @@ export class NotificationsService implements OnModuleInit {
       },
     });
 
-    // لو مفيش token → فشل هادئ
+    // Fail gracefully when no token is available.
     if (!driver?.fcmToken) {
       await this.db.notification.update({
         where: { id: notification.id },
@@ -81,7 +81,7 @@ export class NotificationsService implements OnModuleInit {
       return { sent: false, reason: 'no_fcm_token' };
     }
 
-    // إرسال FCM
+    // Send the FCM message.
     try {
       await getFirebaseMessaging().send({
         token: driver.fcmToken,
@@ -111,7 +111,7 @@ export class NotificationsService implements OnModuleInit {
         },
       });
 
-      // ✅ نجح
+      // ✅ Sent successfully.
       await this.db.notification.update({
         where: { id: notification.id },
         data: { status: 'SENT', sentAt: new Date() },
@@ -120,13 +120,13 @@ export class NotificationsService implements OnModuleInit {
       this.logger.log(`✅ Notification sent to ${driver.name} — ${type}`);
       return { sent: true, notificationId: notification.id };
     } catch (error) {
-      // ❌ فشل
+      // ❌ Send failed.
       await this.db.notification.update({
         where: { id: notification.id },
         data: { status: 'FAILED' },
       });
 
-      // لو الـ token منتهي الصلاحية → امسحه
+      // Remove expired tokens.
       if (
         error.code === 'messaging/registration-token-not-registered' ||
         error.code === 'messaging/invalid-registration-token'
@@ -206,10 +206,10 @@ export class NotificationsService implements OnModuleInit {
     });
   }
 
-  // ─── Announcement لكل السائقين ────────────────────────
+  // ─── Announcement for all drivers ─────────────────────
 
   async sendAnnouncement(tenantId: string, dto: SendAnnouncementDto) {
-    // جلب السائقين المستهدفين
+    // Get the targeted drivers.
     const drivers = await this.db.driver.findMany({
       where: {
         tenantId,
@@ -226,7 +226,7 @@ export class NotificationsService implements OnModuleInit {
       return { sent: 0, message: 'لا يوجد سائقون لإرسال الإشعار إليهم' };
     }
 
-    // Multicast — إرسال لمجموعة دفعة واحدة (أكفأ)
+    // Multicast sends to a group in one more efficient batch.
     const tokens = drivers.map((d) => d.fcmToken!);
 
     const response = await getFirebaseMessaging().sendEachForMulticast({
@@ -236,7 +236,7 @@ export class NotificationsService implements OnModuleInit {
       android: { priority: 'high' },
     });
 
-    // تسجيل في DB
+    // Save the record to the database.
     await this.db.notification.createMany({
       data: drivers.map((driver) => ({
         tenantId,
@@ -289,7 +289,7 @@ export class NotificationsService implements OnModuleInit {
       }),
       this.db.notification.count({ where: { driverId } }),
       this.db.notification.count({
-        where: { driverId, status: 'SENT' }, // SENT = لم يُقرأ بعد
+        where: { driverId, status: 'SENT' }, // SENT means unread.
       }),
     ]);
 

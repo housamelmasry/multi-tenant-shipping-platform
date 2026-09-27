@@ -11,7 +11,7 @@ import { REDIS_CLIENT } from '../../redis/redis.module';
 import { Redis } from 'ioredis';
 import { DatabaseService } from '@database/database.service';
 
-// حدود كل باقة يومياً
+// Daily limits for each plan.
 const PLAN_LIMITS = {
   BASIC: 1_000,
   PRO: 10_000,
@@ -29,26 +29,22 @@ export class ApiKeyRateLimitGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user;
 
-    // هذا الـ guard للـ API Key فقط
+    // This guard applies only to API-key requests.
     if (!user?.isTenant) return true;
 
     const tenantId = user.tenantId;
     const today = new Date().toISOString().split('T')[0]; // 2024-01-15
     const key = `ratelimit:api:${tenantId}:${today}`;
 
-    // جلب الباقة من الـ DB (مع cache)
+    // Load the plan from the database, using the cache when available.
     const limit = await this.getTenantLimit(tenantId);
 
-    // increment و expire
-    const result = await this.redis
-      .multi()
-      .incr(key)
-      .expire(key, 86400)
-      .exec();
+    // Increment the counter and set its expiration.
+    const result = await this.redis.multi().incr(key).expire(key, 86400).exec();
 
-    const count = result?.[0]?.[1] as number ?? 1;
+    const count = (result?.[0]?.[1] as number) ?? 1;
 
-    // إضافة headers للـ response
+    // Add rate-limit headers to the response.
     const response = context.switchToHttp().getResponse();
     response.setHeader('X-RateLimit-Limit', limit);
     response.setHeader('X-RateLimit-Remaining', Math.max(0, limit - count));
@@ -56,7 +52,7 @@ export class ApiKeyRateLimitGuard implements CanActivate {
     response.setHeader('X-RateLimit-Used', count);
 
     if (count > limit) {
-      // تسجيل التجاوز
+      // Record the rate-limit event.
       await this.logExceededLimit(tenantId, count, limit);
 
       throw new HttpException(
@@ -77,7 +73,7 @@ export class ApiKeyRateLimitGuard implements CanActivate {
   }
 
   private async getTenantLimit(tenantId: string): Promise<number> {
-    // Cache في Redis لـ 10 دقائق
+    // Cache the result in Redis for 10 minutes.
     const cacheKey = `tenant:plan:${tenantId}`;
     const cached = await this.redis.get(cacheKey);
 
@@ -89,7 +85,7 @@ export class ApiKeyRateLimitGuard implements CanActivate {
     });
 
     const limit = PLAN_LIMITS[tenant?.plan ?? 'BASIC'];
-    await this.redis.setex(cacheKey, 600, limit.toString()); // 10 دقائق
+    await this.redis.setex(cacheKey, 600, limit.toString()); // 10 minutes
 
     return limit;
   }
@@ -106,7 +102,7 @@ export class ApiKeyRateLimitGuard implements CanActivate {
     count: number,
     limit: number,
   ) {
-    // يمكن إرسال تنبيه للـ super admin
+    // A notification can be sent to the super admin.
     console.warn(
       `⚠️ Rate limit exceeded | Tenant: ${tenantId} | Used: ${count}/${limit}`,
     );

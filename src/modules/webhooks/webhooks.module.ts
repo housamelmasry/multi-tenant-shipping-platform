@@ -10,6 +10,6 @@ import { WebhooksProcessor } from './webhooks.processor';
   imports: [HttpModule, BullModule.registerQueue({ name: WEBHOOK_QUEUE })],
   controllers: [WebhooksController],
   providers: [WebhooksService, WebhooksProcessor],
-  exports: [WebhooksService], // مهم عشان Orders و Drivers يستخدموه
+  exports: [WebhooksService], // Required by the orders and drivers modules.
 })
 export class WebhooksModule {}

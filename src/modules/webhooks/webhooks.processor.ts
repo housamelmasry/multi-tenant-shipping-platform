@@ -24,7 +24,7 @@ export class WebhooksProcessor {
   async handleSend(job: Job<WebhookJobData>) {
     const { webhookLogId, url, secret, event, payload } = job.data;
 
-    // توليد الـ signature للأمان
+    // Generate the signature for request verification.
     const signature = this.generateSignature(payload, secret);
     const timestamp = Date.now().toString();
 
@@ -38,11 +38,11 @@ export class WebhooksProcessor {
             'X-Webhook-Timestamp': timestamp,
             'X-Webhook-Delivery-Id': webhookLogId,
           },
-          timeout: 10000, // 10 ثواني max
+          timeout: 10000, // Maximum timeout: 10 seconds.
         }),
       );
 
-      // ✅ نجح → تحديث الـ log
+      // ✅ Update the log after a successful delivery.
       await this.db.webhookLog.update({
         where: { id: webhookLogId },
         data: {
@@ -60,7 +60,7 @@ export class WebhooksProcessor {
       ).slice(0, 1000);
       const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 5);
 
-      // حساب وقت المحاولة القادمة
+      // Calculate when to make the next attempt.
       const nextRetryAt = isLastAttempt
         ? null
         : new Date(Date.now() + this.getBackoffDelay(job.attemptsMade + 1));
@@ -76,7 +76,7 @@ export class WebhooksProcessor {
         },
       });
 
-      // إعادة throw عشان Bull يعمل retry
+      // Rethrow the error so Bull retries the job.
       throw error;
     }
   }

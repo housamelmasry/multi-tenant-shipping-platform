@@ -24,7 +24,7 @@ export class CreateTenantDto {
   @IsEnum(Plan)
   plan: Plan;
 
-  // بيانات أول admin للشركة
+  // Initial company administrator details.
   @IsString()
   adminName: string;
 

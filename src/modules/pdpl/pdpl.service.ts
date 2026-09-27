@@ -1,6 +1,8 @@
 import {
-  Injectable, Logger,
-  NotFoundException, BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '@database/database.service';
 import { StorageService } from '@modules/storage/storage.service';
@@ -108,7 +110,7 @@ export class PdplService {
     });
   }
 
-  // ─── Right of Access (حق الاطلاع) ────────────────────
+  // ─── Right to access personal data ────────────────────
 
   async generateDataReport(requestId: string, tenantId: string) {
     const request = await this.db.dataRequest.findFirst({
@@ -134,7 +136,12 @@ export class PdplService {
 
       const consents = await this.db.consentLog.findMany({
         where: { tenantId, phone: request.phone },
-        select: { purpose: true, consentedAt: true, revokedAt: true, isActive: true },
+        select: {
+          purpose: true,
+          consentedAt: true,
+          revokedAt: true,
+          isActive: true,
+        },
       });
 
       report = {
@@ -143,7 +150,8 @@ export class PdplService {
         totalOrders: orders.length,
         consents,
         generatedAt: new Date().toISOString(),
-        retentionInfo: 'يتم الاحتفاظ ببياناتك لمدة 3 سنوات وفقاً لسياسة الخصوصية',
+        retentionInfo:
+          'يتم الاحتفاظ ببياناتك لمدة 3 سنوات وفقاً لسياسة الخصوصية',
       };
     }
 
@@ -179,7 +187,7 @@ export class PdplService {
     return report;
   }
 
-  // ─── Right of Erasure (حق الحذف) ─────────────────────
+  // ─── Right to erase personal data ─────────────────────
 
   async anonymizeCustomerData(tenantId: string, phone: string) {
     const anonymizedName = '[محذوف]';
@@ -201,7 +209,9 @@ export class PdplService {
     await this.revokeConsent(tenantId, phone, 'delivery');
     await this.revokeConsent(tenantId, phone, 'marketing');
 
-    this.logger.log(`Anonymized ${updated.count} orders for ${anonymizedPhone}`);
+    this.logger.log(
+      `Anonymized ${updated.count} orders for ${anonymizedPhone}`,
+    );
 
     return {
       message: 'تم إخفاء البيانات الشخصية بنجاح',
@@ -353,7 +363,9 @@ export class PdplService {
 
   private async cleanupWebhookLogs() {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - RETENTION_POLICY.webhookLogs.retentionDays);
+    cutoff.setDate(
+      cutoff.getDate() - RETENTION_POLICY.webhookLogs.retentionDays,
+    );
 
     const { count } = await this.db.webhookLog.deleteMany({
       where: {
@@ -367,7 +379,9 @@ export class PdplService {
 
   private async cleanupAccessLogs() {
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - RETENTION_POLICY.accessLogs.retentionDays);
+    cutoff.setDate(
+      cutoff.getDate() - RETENTION_POLICY.accessLogs.retentionDays,
+    );
 
     const { count } = await this.db.dataAccessLog.deleteMany({
       where: { createdAt: { lt: cutoff } },
@@ -402,8 +416,6 @@ export class PdplService {
   }
 
   private async notifySdaia(breach: any) {
-    this.logger.error(
-      `SDAIA Notification Required for breach: ${breach.id}`,
-    );
+    this.logger.error(`SDAIA Notification Required for breach: ${breach.id}`);
   }
 }

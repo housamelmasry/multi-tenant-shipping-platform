@@ -7,7 +7,7 @@ import { OrderStatus } from '@common/enums';
 export class TrackingService {
   constructor(private db: DatabaseService) {}
 
-  // ─── Public Tracking (العميل النهائي) ─────────────────
+  // ─── Public tracking for end customers ────────────────
 
   async trackByCode(trackingCode: string) {
     const order = await this.db.order.findUnique({
@@ -43,7 +43,7 @@ export class TrackingService {
 
     if (!order) throw new NotFoundException('رمز التتبع غير صحيح');
 
-    // نرجع موقع السائق فقط لو الطلب in_transit
+    // Return the driver's location only when the order is in transit.
     const showDriverLocation = order.status === OrderStatus.IN_TRANSIT;
 
     return {
@@ -52,7 +52,7 @@ export class TrackingService {
         ? {
             name: order.driver.name,
             vehicleType: order.driver.vehicleType,
-            // الموقع فقط لو in_transit
+            // Include the location only when the order is in transit.
             ...(showDriverLocation && {
               currentLat: order.driver.currentLat,
               currentLng: order.driver.currentLng,

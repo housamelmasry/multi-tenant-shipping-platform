@@ -11,7 +11,7 @@ import { UserRole } from '@common/enums';
 export class TrackingController {
   constructor(private trackingService: TrackingService) {}
 
-  // العميل النهائي — بدون auth
+  // End-customer tracking; no authentication required.
   @Get(':trackingCode')
   @Public()
   @Throttle({
@@ -23,7 +23,7 @@ export class TrackingController {
     return this.trackingService.trackByCode(trackingCode);
   }
 
-  // Admin Dashboard — خريطة حية
+  // Live map for the admin dashboard.
   @Get('live/drivers')
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
   getLiveDrivers(@GetCurrentUser('tenantId') tenantId: string) {

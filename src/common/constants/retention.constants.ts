@@ -1,37 +1,37 @@
 // src/common/constants/retention.constants.ts
 
 export const RETENTION_POLICY = {
-  // بيانات الطلبات
+  // Order data
   orders: {
-    completedDays: 365 * 3, // 3 سنوات للطلبات المكتملة
-    cancelledDays: 365, // سنة للملغية
-    anonymizeAfter: 365 * 5, // إخفاء الهوية بعد 5 سنوات
+    completedDays: 365 * 3, // 3 years for completed orders
+    cancelledDays: 365, // 1 year for canceled orders
+    anonymizeAfter: 365 * 5, // Anonymize after 5 years
   },
 
-  // بيانات السائقين
+  // Driver data
   drivers: {
-    activeDays: -1, // طول فترة العمل
-    terminatedDays: 365 * 2, // سنتين بعد انتهاء العقد
+    activeDays: -1, // For the duration of employment
+    terminatedDays: 365 * 2, // 2 years after termination
   },
 
-  // صور التسليم
+  // Delivery photos
   photos: {
-    deliveryDays: 365, // سنة
-    returnDays: 365, // سنة
+    deliveryDays: 365, // 1 year
+    returnDays: 365, // 1 year
   },
 
-  // سجلات الـ SMS
+  // SMS logs
   smsLogs: {
-    retentionDays: 90, // 90 يوم
+    retentionDays: 90, // 90 days
   },
 
-  // سجلات الـ Webhooks
+  // Webhook logs
   webhookLogs: {
-    retentionDays: 30, // 30 يوم
+    retentionDays: 30, // 30 days
   },
 
-  // سجلات الوصول
+  // Access logs
   accessLogs: {
-    retentionDays: 365, // سنة
+    retentionDays: 365, // 1 year
   },
 } as const;

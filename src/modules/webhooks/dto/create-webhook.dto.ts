@@ -1,7 +1,7 @@
 // src/modules/webhooks/dto/create-webhook.dto.ts
 import { IsUrl, IsString, IsArray, IsIn, ArrayMinSize } from 'class-validator';
 
-// كل الأحداث الممكنة
+// All supported webhook events.
 export const WEBHOOK_EVENTS = [
   'order.created',
   'order.assigned',
@@ -16,7 +16,7 @@ export const WEBHOOK_EVENTS = [
 export type WebhookEvent = (typeof WEBHOOK_EVENTS)[number];
 
 export class CreateWebhookDto {
-  @IsUrl({ require_tld: false }) // require_tld: false للـ development
+  @IsUrl({ require_tld: false }) // Allow URLs without a TLD in development.
   url: string;
 
   @IsArray()

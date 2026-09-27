@@ -22,7 +22,7 @@ export const createS3Client = (config: ConfigService): S3Client => {
     return new S3Client({
       region: 'us-east-1',
       endpoint: config.get('MINIO_ENDPOINT'),
-      forcePathStyle: true, // مطلوب لـ MinIO
+      forcePathStyle: true, // Required for MinIO.
       credentials: {
         accessKeyId: config.get('MINIO_ACCESS_KEY')!,
         secretAccessKey: config.get('MINIO_SECRET_KEY')!,

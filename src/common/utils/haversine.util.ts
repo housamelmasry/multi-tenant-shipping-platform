@@ -12,7 +12,7 @@ export function calculateDistance(
   lat2: number,
   lng2: number,
 ): number {
-  // الفرق بين الإحداثيات
+  // Differences between the coordinates.
   const dLat = toRadians(lat2 - lat1);
   const dLng = toRadians(lng2 - lng1);
 
@@ -26,7 +26,7 @@ export function calculateDistance(
 
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-  // المسافة بالكيلومتر
+  // Distance in kilometers.
   return EARTH_RADIUS_KM * c;
 }
 
@@ -39,12 +39,12 @@ export function findNearestDriver(
     currentLng: number | null;
     [key: string]: any;
   }>,
-  maxDistanceKm: number = 20, // حد أقصى 20 كم
+  maxDistanceKm: number = 20, // Maximum distance in kilometers.
 ): { driver: (typeof drivers)[0]; distanceKm: number } | null {
   const driversWithDistance = drivers
-    // فلترة السائقين بدون موقع
+    // Exclude drivers without a location.
     .filter((d) => d.currentLat !== null && d.currentLng !== null)
-    // حساب المسافة لكل سائق
+    // Calculate the distance for each driver.
     .map((driver) => ({
       driver,
       distanceKm: calculateDistance(
@@ -54,9 +54,9 @@ export function findNearestDriver(
         Number(driver.currentLng),
       ),
     }))
-    // فلترة من هم خارج الحد الأقصى
+    // Exclude drivers beyond the maximum distance.
     .filter((d) => d.distanceKm <= maxDistanceKm)
-    // ترتيب من الأقرب للأبعد
+    // Sort from nearest to farthest.
     .sort((a, b) => a.distanceKm - b.distanceKm);
 
   return driversWithDistance[0] ?? null;

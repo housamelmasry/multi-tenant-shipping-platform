@@ -3,7 +3,7 @@ import { memoryStorage } from 'multer';
 import { BadRequestException } from '@nestjs/common';
 
 export const multerConfig = {
-  storage: memoryStorage(), // في الـ RAM مؤقتاً
+  storage: memoryStorage(), // Temporarily store files in memory.
   limits: {
     fileSize: 15 * 1024 * 1024, // 15MB
     files: 1,

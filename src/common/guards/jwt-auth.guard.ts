@@ -15,7 +15,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   canActivate(context: ExecutionContext) {
-    // لو الـ endpoint عليه @Public() اعمل bypass
+    // Bypass authentication when the endpoint is marked @Public().
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),

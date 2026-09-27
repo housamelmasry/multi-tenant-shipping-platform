@@ -23,19 +23,19 @@ import * as path from 'path';
 
 @Module({
   imports: [
-    // Config أول حاجة دايماً
+    // Load configuration first.
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
     }),
     I18nModule.forRoot({
-      fallbackLanguage: 'ar', // العربية افتراضي
+      fallbackLanguage: 'ar', // Arabic is the fallback language.
       loaderOptions: {
         path: path.join(process.cwd(), 'src', 'i18n'),
         watch: false,
       },
       resolvers: [
-        // بيحدد اللغة من الـ header أو الـ query
+        // Resolve the language from the header or query string.
         { use: QueryResolver, options: ['lang'] },
         AcceptLanguageResolver,
       ],

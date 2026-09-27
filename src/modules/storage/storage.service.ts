@@ -25,9 +25,9 @@ import * as path from 'path';
 export type UploadFolder = 'delivery-photos' | 'return-photos' | 'documents';
 
 export type UploadResult = {
-  key: string; // المسار الداخلي في الـ bucket
-  url: string; // الرابط الكامل
-  size: number; // الحجم بعد الضغط
+  key: string; // Internal path in the bucket.
+  url: string; // Full URL.
+  size: number; // Size after compression.
   mimeType: string;
 };
 
@@ -49,7 +49,7 @@ const ALLOWED_MIME_TYPES = [
   'image/heif', // iOS
 ];
 
-const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB قبل الضغط
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB before compression.
 
 const FOLDER_OPTIONS: Record<UploadFolder, ProcessOptions> = {
   'delivery-photos': {
@@ -104,16 +104,16 @@ export class StorageService implements OnModuleInit {
     tenantId: string,
     metadata?: Record<string, string>,
   ): Promise<UploadResult> {
-    // 1. التحقق من نوع الملف
+    // 1. Validate the file type.
     this.validateFile(file);
 
-    // 2. ضغط وتحسين الصورة
+    // 2. Compress and optimize the image.
     const processed = await this.processImage(file, folder);
 
-    // 3. توليد اسم فريد
+    // 3. Generate a unique filename.
     const key = this.generateKey(folder, tenantId, processed.format);
 
-    // 4. رفع على S3
+    // 4. Upload to S3.
     await this.s3Client.send(
       new PutObjectCommand({
         Bucket: this.bucket,
@@ -143,7 +143,7 @@ export class StorageService implements OnModuleInit {
     };
   }
 
-  // ─── Signed URL (رابط مؤقت آمن) ──────────────────────
+  // ─── Signed URL (temporary secure link) ───────────────
 
   async getSignedUrl(key: string, expiresInSeconds = 3600): Promise<string> {
     const command = new GetObjectCommand({
@@ -168,7 +168,7 @@ export class StorageService implements OnModuleInit {
       );
       this.logger.log(`🗑️  Deleted: ${key}`);
     } catch (error) {
-      // لو مش موجود → مش مشكلة
+      // Missing objects are not an error here.
       this.logger.warn(`Failed to delete ${key}: ${error.message}`);
     }
   }
@@ -183,26 +183,26 @@ export class StorageService implements OnModuleInit {
 
     try {
       let sharpInstance = sharp(file.buffer)
-        .rotate() // auto-rotate حسب EXIF
+        .rotate() // Auto-rotate based on EXIF data.
         .resize({
           width: options.maxWidth,
           height: options.maxHeight,
-          fit: 'inside', // محافظة على النسبة
-          withoutEnlargement: true, // مش يكبر لو أصغر
+          fit: 'inside', // Preserve the aspect ratio.
+          withoutEnlargement: true, // Do not enlarge smaller images.
         });
 
-      // تحويل لـ JPEG أو WebP
+      // Convert to JPEG or WebP.
       if (options.format === 'webp') {
         sharpInstance = sharpInstance.webp({ quality: options.quality });
       } else {
         sharpInstance = sharpInstance.jpeg({
           quality: options.quality,
-          progressive: true, // أسرع في التحميل
-          mozjpeg: true, // ضغط أفضل
+          progressive: true, // Faster to load.
+          mozjpeg: true, // Better compression.
         });
       }
 
-      // إزالة الـ EXIF (خصوصية — مش نحتفظ بالموقع الجغرافي)
+      // Remove EXIF metadata to avoid retaining location data.
       sharpInstance = sharpInstance.withMetadata();
 
       const buffer = await sharpInstance.toBuffer();
@@ -249,7 +249,7 @@ export class StorageService implements OnModuleInit {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const random = crypto.randomBytes(16).toString('hex');
 
-    // مثال: delivery-photos/tenant-uuid/2024/01/a3f92b1c...jpeg
+    // Example: delivery-photos/tenant-uuid/2024/01/a3f92b1c...jpeg
     return `${folder}/${tenantId}/${year}/${month}/${random}.${format}`;
   }
 
@@ -284,17 +284,20 @@ export class StorageService implements OnModuleInit {
 
   private async ensureBucketExists(): Promise<void> {
     try {
-      await this.s3Client.send(
-        new HeadBucketCommand({ Bucket: this.bucket }),
-        { requestTimeout: 5000 },
-      );
+      await this.s3Client.send(new HeadBucketCommand({ Bucket: this.bucket }), {
+        requestTimeout: 5000,
+      });
       this.logger.log(`✅ Storage bucket ready: ${this.bucket}`);
     } catch (err) {
-      if (err.name === 'CredentialsProviderError' || err.name === 'CredentialsError' || err.message?.includes('connect')) {
+      if (
+        err.name === 'CredentialsProviderError' ||
+        err.name === 'CredentialsError' ||
+        err.message?.includes('connect')
+      ) {
         this.logger.warn('⏭️ Storage skipped — no valid credentials');
         return;
       }
-      // لو مش موجود → إنشاء (للـ MinIO development فقط)
+      // Create the bucket if it does not exist (MinIO development only).
       if (this.provider === 'minio') {
         await this.s3Client.send(
           new CreateBucketCommand({ Bucket: this.bucket }),

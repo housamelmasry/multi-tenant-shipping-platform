@@ -28,18 +28,18 @@ export class TenantsService {
   // ─── Super Admin Only ────────────────────────────────
 
   async create(dto: CreateTenantDto) {
-    // 1. التحقق من uniqueness
+    // 1. Check uniqueness.
     await this.assertSlugUnique(dto.slug);
     await this.assertAdminEmailUnique(dto.adminEmail);
 
-    // 2. توليد API credentials
+    // 2. Generate API credentials.
     const apiKey = this.generateApiKey();
     const apiSecret = this.generateApiSecret();
 
-    // 3. hash الباسورد
+    // 3. Hash the password.
     const hashedPassword = await bcrypt.hash(dto.adminPassword, 12);
 
-    // 4. إنشاء الـ tenant + admin في transaction
+    // 4. Create the tenant and administrator in a transaction.
     const tenant = await this.db.$transaction(async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
@@ -66,7 +66,7 @@ export class TenantsService {
 
     return {
       ...tenant,
-      // نرجع الـ apiKey مرة واحدة بس عند الإنشاء
+      // Return the API key only once, when the tenant is created.
       apiKey,
       apiSecret,
     };
@@ -138,7 +138,7 @@ export class TenantsService {
       throw new NotFoundException('الشركة غير موجودة');
     }
 
-    // مش نرجع الـ apiSecret أبداً
+    // Never return the API secret.
     const { apiSecret, ...safeTenant } = tenant;
     return safeTenant;
   }
@@ -175,7 +175,7 @@ export class TenantsService {
   }
 
   async regenerateApiKey(id: string, dto: RegenerateApiKeyDto, userId: string) {
-    // التحقق من الباسورد قبل إعادة التوليد
+    // Verify the password before regenerating the key.
     const user = await this.db.user.findUnique({ where: { id: userId } });
     if (!user) {
       throw new UnauthorizedException('المستخدم غير موجود');
@@ -195,7 +195,7 @@ export class TenantsService {
       data: { apiKey, apiSecret },
     });
 
-    // نرجعهم مرة واحدة بس
+    // Return the credentials only once.
     return { apiKey, apiSecret };
   }
 

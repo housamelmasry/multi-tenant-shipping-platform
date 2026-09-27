@@ -80,7 +80,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       phone: '+966500000001',
       nationalId: '0000000001',
       vehicleType: 'motorcycle',
-      vehiclePlate: 'أ ب ج 1234',
+      vehiclePlate: 'DEMO-0001',
       status: 'available',
       currentLat: 24.7136,
       currentLng: 46.6753,
@@ -90,7 +90,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       phone: '+966500000002',
       nationalId: '0000000002',
       vehicleType: 'car',
-      vehiclePlate: 'د هـ و 5678',
+      vehiclePlate: 'DEMO-0002',
       status: 'available',
       currentLat: 24.72,
       currentLng: 46.68,
@@ -100,7 +100,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       phone: '+966500000003',
       nationalId: '0000000003',
       vehicleType: 'van',
-      vehiclePlate: 'ز ح ط 9012',
+      vehiclePlate: 'DEMO-0003',
       status: 'offline',
       currentLat: null,
       currentLng: null,
@@ -124,7 +124,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       },
     });
 
-    // user account للسائق
+    // Create a user account for the driver.
     await prisma.user.create({
       data: {
         tenantId: tenant.id,
@@ -202,7 +202,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       },
     });
 
-    // تسجيل حالة البداية
+    // Record the initial status.
     await prisma.orderStatusHistory.create({
       data: {
         orderId: order.id,

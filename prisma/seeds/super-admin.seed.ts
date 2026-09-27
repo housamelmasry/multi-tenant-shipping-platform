@@ -17,7 +17,7 @@ export async function seedSuperAdmin(prisma: PrismaClient) {
     throw new Error('SUPER_ADMIN_PASSWORD is required');
   }
 
-  // التحقق من الوجود المسبق
+  // Check whether the user already exists.
   const existing = await prisma.user.findUnique({
     where: { email },
   });
@@ -27,7 +27,7 @@ export async function seedSuperAdmin(prisma: PrismaClient) {
     return existing;
   }
 
-  // إنشاء Super Admin
+  // Create the super admin.
   const hashedPassword = await bcrypt.hash(password, 12);
 
   const superAdmin = await prisma.user.create({

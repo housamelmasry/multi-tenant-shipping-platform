@@ -15,9 +15,9 @@ async function bootstrap() {
   // Validation
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // يشيل أي fields مش في الـ DTO
+      whitelist: true, // Remove fields not declared in the DTO.
       forbidNonWhitelisted: true,
-      transform: true, // يحول الـ types تلقائياً
+      transform: true, // Automatically transform values to their declared types.
     }),
   );
 
@@ -107,9 +107,9 @@ function setupSwagger(app: any) {
     customSiteTitle: 'Shipping API Docs',
     customfavIcon: 'https://yourapp.com/favicon.ico',
     swaggerOptions: {
-      persistAuthorization: true, // حفظ الـ token
-      displayRequestDuration: true, // عرض وقت الاستجابة
-      filter: true, // بحث في الـ endpoints
+      persistAuthorization: true, // Persist authorization credentials.
+      displayRequestDuration: true, // Display request duration.
+      filter: true, // Enable endpoint search.
       deepLinking: true,
       defaultModelsExpandDepth: 2,
       tagsSorter: 'alpha',

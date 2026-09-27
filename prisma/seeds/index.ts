@@ -11,10 +11,10 @@ async function main() {
 
   const isDev = process.env.NODE_ENV === 'development';
 
-  // ─── إلزامي في كل البيئات ────────────────────────────
+  // ─── Required in all environments ────────────────────
   await seedSuperAdmin(prisma);
 
-  // ─── للـ development فقط ──────────────────────────────
+  // ─── Development only ────────────────────────────────
   if (isDev) {
     await seedDemoTenant(prisma);
   }

@@ -2,7 +2,7 @@
 import { IsString, MinLength } from 'class-validator';
 
 export class RegenerateApiKeyDto {
-  // تأكيد الباسورد قبل إعادة توليد الـ API Key
+  // Confirm the password before regenerating the API key.
   @IsString()
   @MinLength(6)
   password: string;

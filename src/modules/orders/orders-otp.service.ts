@@ -70,7 +70,7 @@ export class OrdersOtpService {
 
     if (!order) throw new NotFoundException('الطلب غير موجود');
 
-    // التحققات
+    // Validate the request.
     if (order.driverId !== driverId) {
       throw new BadRequestException('هذا الطلب غير مخصص لك');
     }
@@ -89,7 +89,7 @@ export class OrdersOtpService {
       throw new BadRequestException('رمز التحقق غير صحيح');
     }
 
-    // رفع الصورة لو موجودة
+    // Upload the photo if one was provided.
     let deliveryPhotoUrl: string | undefined;
     let deliveryPhotoKey: string | undefined;
 
@@ -108,13 +108,13 @@ export class OrdersOtpService {
       deliveryPhotoKey = uploaded.key;
     }
 
-    // ✅ OTP صحيح → إتمام التسليم
+    // ✅ A valid OTP completes the delivery.
     const updatedOrder = await this.db.$transaction(async (tx) => {
       const updated = await tx.order.update({
         where: { id: orderId },
         data: {
           status: OrderStatus.DELIVERED,
-          otpCode: null, // مسح الـ OTP بعد الاستخدام
+          otpCode: null, // Clear the OTP after use.
           otpExpiresAt: null,
           otpVerifiedAt: new Date(),
           deliveredAt: new Date(),
@@ -123,13 +123,13 @@ export class OrdersOtpService {
         },
       });
 
-      // تحرير السائق
+      // Release the driver.
       await tx.driver.update({
         where: { id: driverId },
         data: { status: DriverStatus.AVAILABLE },
       });
 
-      // تسجيل في التاريخ
+      // Add an entry to the history.
       await tx.orderStatusHistory.create({
         data: {
           orderId,

@@ -6,6 +6,6 @@ import { NotificationsService } from './notifications.service';
 @Module({
   controllers: [NotificationsController],
   providers: [NotificationsService],
-  exports: [NotificationsService], // ← مهم للـ modules الأخرى
+  exports: [NotificationsService], // Export this service for use by other modules.
 })
 export class NotificationsModule {}

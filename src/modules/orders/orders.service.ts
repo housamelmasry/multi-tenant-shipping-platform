@@ -60,7 +60,7 @@ export class OrdersService {
       },
     });
 
-    // تسجيل أول حالة في التاريخ
+    // Record the initial status in the history.
     await this.logStatusChange({
       orderId: order.id,
       toStatus: OrderStatus.PENDING,
@@ -73,7 +73,15 @@ export class OrdersService {
   // ─── Read ─────────────────────────────────────────────
 
   async findAll(tenantId: string, query: QueryOrdersDto) {
-    const { status, search, driverId, dateFrom, dateTo, page = 1, limit = 20 } = query;
+    const {
+      status,
+      search,
+      driverId,
+      dateFrom,
+      dateTo,
+      page = 1,
+      limit = 20,
+    } = query;
     const skip = (page - 1) * limit;
 
     const where = {
@@ -147,7 +155,7 @@ export class OrdersService {
 
     if (!order) throw new NotFoundException('الطلب غير موجود');
 
-    // مش نرجع الـ OTP أبداً
+    // Never return the OTP.
     const { otpCode, otpExpiresAt, ...safeOrder } = order;
     return safeOrder;
   }
@@ -162,14 +170,14 @@ export class OrdersService {
   ) {
     const order = await this.assertOrderBelongsToTenant(orderId, tenantId);
 
-    // الطلب لازم يكون pending
+    // The order must be pending.
     if (order.status !== OrderStatus.PENDING) {
       throw new BadRequestException(
         'لا يمكن تعيين سائق لهذا الطلب في حالته الحالية',
       );
     }
 
-    // التحقق إن السائق ينتمي لنفس الـ tenant
+    // Verify that the driver belongs to the same tenant.
     const driver = await this.db.driver.findFirst({
       where: { id: dto.driverId, tenantId, isActive: true },
     });
@@ -180,7 +188,7 @@ export class OrdersService {
       throw new BadRequestException('السائق مشغول حالياً');
     }
 
-    // Transaction: تعيين السائق + تحديث حالته
+    // Transaction: assign the driver and update their status.
     const [updatedOrder] = await this.db.$transaction([
       this.db.order.update({
         where: { id: orderId },
@@ -204,14 +212,14 @@ export class OrdersService {
       note: `تم تعيين السائق ${driver.name}`,
     });
 
-    // إشعار الـ webhook
+    // Send the webhook notification.
     await this.webhooksService.dispatch(
       tenantId,
       'order.assigned',
       updatedOrder,
     );
 
-    // إشعار SMS للعميل
+    // Send an SMS notification to the customer.
     await this.smsService.sendOrderNotification({
       phone: order.recipientPhone,
       template: 'order.assigned',
@@ -236,12 +244,12 @@ export class OrdersService {
   ) {
     const order = await this.assertOrderBelongsToTenant(orderId, tenantId);
 
-    // التحقق إن السائق هو المعين على الطلب
+    // Verify that this driver is assigned to the order.
     if (order.driverId !== driverId) {
       throw new ForbiddenException('هذا الطلب غير مخصص لك');
     }
 
-    // التحقق من صحة الانتقال
+    // Validate the status transition.
     const allowedTransitions = OrderStatusMeta.allowedTransitions(
       order.status as OrderStatus,
     );
@@ -252,7 +260,7 @@ export class OrdersService {
       );
     }
 
-    // لو الحالة delivered → لازم OTP أولاً
+    // Require an OTP before marking the order as delivered.
     if (dto.status === OrderStatus.DELIVERED) {
       throw new BadRequestException('يجب التحقق من OTP أولاً لإتمام التسليم');
     }
@@ -265,7 +273,7 @@ export class OrdersService {
       }),
     };
 
-    // لو الطلب انتهى → حرر السائق
+    // Release the driver when the order reaches a terminal state.
     if (OrderStatusMeta.isFinal(dto.status)) {
       updateData.driver = {
         update: { status: DriverStatus.AVAILABLE },
@@ -331,7 +339,7 @@ export class OrdersService {
         data: { status: OrderStatus.CANCELLED },
       });
 
-      // تحرير السائق لو كان معين
+      // Release the assigned driver, if any.
       if (order.driverId) {
         await tx.driver.update({
           where: { id: order.driverId },
@@ -429,6 +437,6 @@ export class OrdersService {
     const prefix = 'SHP';
     const random = crypto.randomBytes(4).toString('hex').toUpperCase();
     return `${prefix}-${random}`;
-    // مثال: SHP-A3F92B1C
+    // Example: SHP-A3F92B1C
   }
 }

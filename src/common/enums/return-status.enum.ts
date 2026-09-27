@@ -1,11 +1,11 @@
 // src/common/enums/return-status.enum.ts
 export const ReturnStatus = {
-  PENDING: 'pending', // بانتظار تعيين سائق
-  ASSIGNED: 'assigned', // تم تعيين سائق
-  PICKED_UP: 'picked_up', // السائق استلم من العميل
-  IN_TRANSIT: 'in_transit', // في الطريق للمستودع
-  RETURNED: 'returned', // تم التسليم للمستودع ✅
-  CANCELLED: 'cancelled', // ملغي
+  PENDING: 'pending', // Waiting for driver assignment
+  ASSIGNED: 'assigned', // Driver assigned
+  PICKED_UP: 'picked_up', // Picked up from the customer
+  IN_TRANSIT: 'in_transit', // In transit to the warehouse
+  RETURNED: 'returned', // Delivered to the warehouse ✅
+  CANCELLED: 'cancelled', // Canceled
 } as const;
 
 export type ReturnStatus = (typeof ReturnStatus)[keyof typeof ReturnStatus];
@@ -32,5 +32,7 @@ export const ReturnStatusMeta = {
     })[status],
 
   isFinal: (status: ReturnStatus): boolean =>
-    ([ReturnStatus.RETURNED, ReturnStatus.CANCELLED] as ReturnStatus[]).includes(status),
+    (
+      [ReturnStatus.RETURNED, ReturnStatus.CANCELLED] as ReturnStatus[]
+    ).includes(status),
 };

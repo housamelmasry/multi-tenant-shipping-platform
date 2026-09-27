@@ -21,7 +21,7 @@ export class ResponseInterceptor implements NestInterceptor {
   }
 }
 
-// كل response هيبقى شكله:
+// All responses follow this shape:
 // {
 //   success: true,
 //   data: { ... },

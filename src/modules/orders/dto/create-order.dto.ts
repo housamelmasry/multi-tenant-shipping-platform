@@ -11,15 +11,15 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class AddressDto {
-  @ApiProperty({ example: 'متجر الرياض الإلكتروني' })
+  @ApiProperty({ example: 'Demo Store' })
   @IsString()
   name: string;
 
-  @ApiProperty({ example: '+966511111111' })
+  @ApiProperty({ example: '+966500000011' })
   @IsString()
   phone: string;
 
-  @ApiProperty({ example: 'شارع الملك فهد، الرياض' })
+  @ApiProperty({ example: 'Demo address, Riyadh' })
   @IsString()
   address: string;
 
@@ -45,7 +45,7 @@ export class CreateOrderDto {
   @Type(() => AddressDto)
   recipient: AddressDto;
 
-  @ApiPropertyOptional({ example: 'ملابس نسائية' })
+  @ApiPropertyOptional({ example: 'Demo package' })
   @IsOptional()
   @IsString()
   description?: string;
@@ -56,18 +56,24 @@ export class CreateOrderDto {
   @Min(0)
   weight?: number;
 
-  @ApiPropertyOptional({ example: 150.0, description: 'مبلغ الدفع عند الاستلام' })
+  @ApiPropertyOptional({
+    example: 150.0,
+    description: 'مبلغ الدفع عند الاستلام',
+  })
   @IsOptional()
   @IsNumber()
   @Min(0)
   codAmount?: number;
 
-  @ApiPropertyOptional({ example: 'يرجى الاتصال قبل التسليم' })
+  @ApiPropertyOptional({ example: 'Demo delivery note' })
   @IsOptional()
   @IsString()
   notes?: string;
 
-  @ApiPropertyOptional({ example: 'ORD-12345', description: 'رقم الطلب في نظام الشركة' })
+  @ApiPropertyOptional({
+    example: 'ORD-12345',
+    description: 'رقم الطلب في نظام الشركة',
+  })
   @IsOptional()
   @IsString()
   externalRef?: string;

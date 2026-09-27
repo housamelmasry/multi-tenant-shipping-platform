@@ -11,5 +11,5 @@ export class SendAnnouncementDto {
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
-  driverIds?: string[]; // فارغ = كل السائقين
+  driverIds?: string[]; // Empty means all drivers.
 }

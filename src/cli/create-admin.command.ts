@@ -1,5 +1,5 @@
 // src/cli/create-admin.command.ts
-// لإنشاء super admin جديد من الـ terminal بدون seed
+// Create a super admin from the terminal without running the seed.
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
@@ -25,7 +25,7 @@ async function createAdmin() {
   const email = await question('الإيميل: ');
   const password = await question('كلمة المرور: ');
 
-  // التحقق
+  // Check whether the user already exists.
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) {
     console.log('\n❌ هذا الإيميل مستخدم بالفعل');

@@ -23,7 +23,7 @@ export class DriversService {
   // ─── CRUD ─────────────────────────────────────────────
 
   async create(tenantId: string, dto: CreateDriverDto) {
-    // التحقق من عدم تكرار الهاتف
+    // Check that the phone number is unique.
     const existingDriver = await this.db.driver.findUnique({
       where: { phone: dto.phone },
     });
@@ -33,7 +33,7 @@ export class DriversService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
 
-    // إنشاء الـ driver + user account في transaction
+    // Create the driver and user account in a transaction.
     const driver = await this.db.$transaction(async (tx) => {
       const newDriver = await tx.driver.create({
         data: {
@@ -48,7 +48,7 @@ export class DriversService {
         },
       });
 
-      // user account للتطبيق
+      // Create the user's account for the app.
       await tx.user.create({
         data: {
           tenantId,
@@ -56,7 +56,7 @@ export class DriversService {
           email: dto.email ?? `driver_${newDriver.id}@internal.com`,
           password: hashedPassword,
           role: UserRole.TENANT_STAFF,
-          driverId: newDriver.id, // ربط الـ user بالـ driver
+          driverId: newDriver.id, // Link the user account to the driver.
         },
       });
 
@@ -191,7 +191,7 @@ export class DriversService {
 
     if (!driver) throw new NotFoundException('السائق غير موجود');
 
-    // لو مشغول مينفعش يتحول لـ offline
+    // A busy driver cannot be switched to offline.
     if (driver.status === DriverStatus.BUSY && !isOnline) {
       return { message: 'لا يمكن تغيير الحالة أثناء التوصيل' };
     }

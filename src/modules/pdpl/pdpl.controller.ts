@@ -1,15 +1,10 @@
-import {
-  Controller, Get, Post, Patch,
-  Body, Param, Req,
-} from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Req } from '@nestjs/common';
 import { PdplService } from './pdpl.service';
 import { Roles } from '@common/decorators/roles.decorator';
 import { Public } from '@common/decorators/public.decorator';
 import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { UserRole } from '@common/enums';
-import {
-  IsString, IsEnum, IsOptional, IsPhoneNumber,
-} from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsPhoneNumber } from 'class-validator';
 
 class DataRequestDto {
   @IsEnum(['ACCESS', 'RECTIFICATION', 'ERASURE', 'PORTABILITY'])
@@ -33,7 +28,7 @@ class EraseCustomerDto {
 export class PdplController {
   constructor(private pdplService: PdplService) {}
 
-  // ─── Public — العميل النهائي ──────────────────────────
+  // ─── Public — End customer ────────────────────────────
 
   @Post('consent')
   @Public()

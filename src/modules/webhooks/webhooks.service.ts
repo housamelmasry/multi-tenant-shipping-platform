@@ -23,7 +23,7 @@ export class WebhooksService {
   // ─── CRUD ─────────────────────────────────────────────
 
   async create(tenantId: string, dto: CreateWebhookDto) {
-    // كل tenant عنده webhook واحد بس لنفس الـ URL
+    // Each tenant can register a URL only once.
     const existing = await this.db.webhook.findFirst({
       where: { tenantId, url: dto.url },
     });
@@ -53,7 +53,7 @@ export class WebhooksService {
         events: true,
         isActive: true,
         createdAt: true,
-        // مش نرجع الـ secret
+        // Do not return the secret.
       },
     });
   }
@@ -83,7 +83,7 @@ export class WebhooksService {
       data: { secret },
     });
 
-    // نرجع الـ secret مرة واحدة بس
+    // Return the secret only once.
     return { secret };
   }
 
@@ -137,7 +137,7 @@ export class WebhooksService {
       throw new ConflictException('هذا الإشعار تم إرساله بنجاح مسبقاً');
     }
 
-    // إعادة الإضافة للـ queue
+    // Add the job back to the queue.
     await this.queueWebhookJob({
       webhookLogId: log.id,
       webhookId: log.webhookId,
@@ -152,15 +152,15 @@ export class WebhooksService {
     return { message: 'تمت إعادة الجدولة بنجاح' };
   }
 
-  // ─── Dispatch (يُستدعى من باقي الـ Services) ──────────
+  // ─── Dispatch (called by other services) ──────────────
 
   async dispatch(tenantId: string, event: WebhookEvent, orderData: any) {
-    // إيجاد كل الـ webhooks النشطة للـ tenant اللي مشتركة في هذا الحدث
+    // Find active tenant webhooks subscribed to this event.
     const webhooks = await this.db.webhook.findMany({
       where: {
         tenantId,
         isActive: true,
-        events: { has: event }, // تحقق من وجود الحدث في المصفوفة
+        events: { has: event }, // Check whether the event is in the array.
       },
     });
 
@@ -172,7 +172,7 @@ export class WebhooksService {
       data: this.sanitizeOrderData(orderData),
     };
 
-    // إنشاء log + إضافة لـ queue لكل webhook
+    // Create a log and queue a job for each webhook.
     await Promise.all(
       webhooks.map((webhook) =>
         this.createLogAndQueue(webhook, event, payload, tenantId),
@@ -188,7 +188,7 @@ export class WebhooksService {
     payload: any,
     tenantId: string,
   ) {
-    // إنشاء الـ log أولاً
+    // Create the log first.
     const log = await this.db.webhookLog.create({
       data: {
         webhookId: webhook.id,
@@ -200,7 +200,7 @@ export class WebhooksService {
       },
     });
 
-    // إضافة للـ queue
+    // Add the job to the queue.
     await this.queueWebhookJob({
       webhookLogId: log.id,
       webhookId: webhook.id,
@@ -221,7 +221,7 @@ export class WebhooksService {
   }
 
   private sanitizeOrderData(order: any) {
-    // نشيل البيانات الحساسة
+    // Remove sensitive data.
     const { otpCode, otpExpiresAt, ...safeData } = order;
     return safeData;
   }

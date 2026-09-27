@@ -18,7 +18,7 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
-    // 1. إيجاد المستخدم
+    // 1. Find the user.
     const user = await this.db.user.findUnique({
       where: { email: dto.email },
       include: { tenant: true },
@@ -28,13 +28,13 @@ export class AuthService {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
 
-    // 2. التحقق من الباسورد
+    // 2. Verify the password.
     const isPasswordValid = await bcrypt.compare(dto.password, user.password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('بيانات الدخول غير صحيحة');
     }
 
-    // 3. توليد الـ tokens
+    // 3. Generate the tokens.
     const tokens = await this.generateTokens(user);
 
     return {

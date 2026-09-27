@@ -33,14 +33,14 @@ export class ReturnsService {
   // ─── Create Return Request ────────────────────────────
 
   async create(tenantId: string, dto: CreateReturnDto, userId: string) {
-    // التحقق من الطلب الأصلي
+    // Find the original order.
     const order = await this.db.order.findFirst({
       where: { id: dto.orderId, tenantId },
     });
 
     if (!order) throw new NotFoundException('الطلب غير موجود');
 
-    // الطلب لازم يكون في حالة تسمح بالإرجاع
+    // The order must be in a returnable state.
     const returnableStatuses = [
       OrderStatus.DELIVERED,
       OrderStatus.FAILED,
@@ -53,7 +53,7 @@ export class ReturnsService {
       );
     }
 
-    // التحقق من عدم وجود طلب إرجاع مفتوح
+    // Check that no open return request already exists.
     const existingReturn = await this.db.returnRequest.findFirst({
       where: {
         orderId: dto.orderId,
@@ -65,7 +65,7 @@ export class ReturnsService {
       throw new BadRequestException('يوجد طلب إرجاع مفتوح لهذه الشحنة بالفعل');
     }
 
-    // إنشاء طلب الإرجاع + تحديث حالة الطلب الأصلي
+    // Create the return request and update the original order status.
     const returnRequest = await this.db.$transaction(async (tx) => {
       const newReturn = await tx.returnRequest.create({
         data: {
@@ -83,13 +83,13 @@ export class ReturnsService {
         },
       });
 
-      // تحديث حالة الطلب الأصلي
+      // Update the original order status.
       await tx.order.update({
         where: { id: dto.orderId },
         data: { status: OrderStatus.RETURNED },
       });
 
-      // تسجيل في تاريخ الإرجاع
+      // Add an entry to the return history.
       await tx.returnStatusHistory.create({
         data: {
           returnRequestId: newReturn.id,
@@ -103,7 +103,7 @@ export class ReturnsService {
       return newReturn;
     });
 
-    // إشعار الشركة عبر webhook
+    // Notify the company through a webhook.
     await this.webhooksService.dispatch(tenantId, 'order.returned' as any, {
       ...order,
       returnRequest,
@@ -283,7 +283,7 @@ export class ReturnsService {
       );
     }
 
-    // لو الحالة returned → لازم OTP أولاً
+    // Require an OTP before marking the return as delivered.
     if (dto.status === ReturnStatus.RETURNED) {
       throw new BadRequestException('يجب التحقق من OTP أولاً لإتمام الإرجاع');
     }
@@ -305,7 +305,7 @@ export class ReturnsService {
     return updatedReturn;
   }
 
-  // ─── OTP للمستودع ─────────────────────────────────────
+  // ─── Warehouse OTP ────────────────────────────────────
 
   async generateWarehouseOtp(
     returnId: string,
@@ -333,7 +333,7 @@ export class ReturnsService {
       data: { otpCode, otpExpiresAt },
     });
 
-    // إرسال OTP لموظف المستودع
+    // Send an OTP to the warehouse contact.
     await this.smsService.sendReturnOtp({
       phone: returnRequest.warehousePhone,
       orderId: returnRequest.orderId,
@@ -374,7 +374,7 @@ export class ReturnsService {
       throw new BadRequestException('رمز التحقق غير صحيح');
     }
 
-    // ✅ إتمام الإرجاع
+    // ✅ Complete the return.
     const updatedReturn = await this.db.$transaction(async (tx) => {
       const updated = await tx.returnRequest.update({
         where: { id: returnId },
@@ -388,7 +388,7 @@ export class ReturnsService {
         },
       });
 
-      // تحرير السائق
+      // Release the driver.
       await tx.driver.update({
         where: { id: driverId },
         data: { status: DriverStatus.AVAILABLE },
@@ -408,7 +408,7 @@ export class ReturnsService {
       return updated;
     });
 
-    // إشعار الشركة
+    // Notify the company.
     await this.webhooksService.dispatch(
       tenantId,
       'order.returned' as any,
@@ -427,7 +427,11 @@ export class ReturnsService {
     );
 
     const cancellableStatuses = [ReturnStatus.PENDING, ReturnStatus.ASSIGNED];
-    if (!(cancellableStatuses as ReturnStatus[]).includes(returnRequest.status as ReturnStatus)) {
+    if (
+      !(cancellableStatuses as ReturnStatus[]).includes(
+        returnRequest.status as ReturnStatus,
+      )
+    ) {
       throw new BadRequestException('لا يمكن إلغاء هذا الطلب في حالته الحالية');
     }
 
@@ -437,7 +441,7 @@ export class ReturnsService {
         data: { status: ReturnStatus.CANCELLED },
       });
 
-      // تحرير السائق لو كان معين
+      // Release the assigned driver, if any.
       if (returnRequest.driverId) {
         await tx.driver.update({
           where: { id: returnRequest.driverId },
@@ -445,7 +449,7 @@ export class ReturnsService {
         });
       }
 
-      // إرجاع الطلب الأصلي لحالته السابقة
+      // Restore the original order to its previous status.
       await tx.order.update({
         where: { id: returnRequest.orderId },
         data: { status: OrderStatus.FAILED },
@@ -492,5 +496,4 @@ export class ReturnsService {
       },
     });
   }
-
 }

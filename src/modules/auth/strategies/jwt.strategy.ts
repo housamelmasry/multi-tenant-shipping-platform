@@ -34,6 +34,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('المستخدم غير موجود أو غير نشط');
     }
 
-    return user; // هيتحط في request.user
+    return user; // Attach the user to request.user.
   }
 }

@@ -10,7 +10,7 @@ import { map } from 'rxjs/operators';
 
 @Injectable()
 export class PrivacyInterceptor implements NestInterceptor {
-  // حقول يتم إخفاؤها جزئياً في الـ responses
+  // Fields to partially redact in responses.
   private readonly maskFields = ['nationalId', 'national_id'];
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
@@ -32,7 +32,7 @@ export class PrivacyInterceptor implements NestInterceptor {
       }
     }
 
-    // معالجة الكائنات المتداخلة
+    // Process nested objects.
     for (const key of Object.keys(masked)) {
       if (typeof masked[key] === 'object') {
         masked[key] = this.maskSensitiveData(masked[key]);

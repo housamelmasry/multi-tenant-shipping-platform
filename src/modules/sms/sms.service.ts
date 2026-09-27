@@ -44,7 +44,8 @@ export class SmsService {
       'order.failed': `مرحباً ${params.recipientName}، لم نتمكن من تسليم طلبك ${params.trackingCode}. سنتواصل معك قريباً`,
     };
 
-    const message = messages[params.template] ?? `تحديث للطلب ${params.trackingCode}`;
+    const message =
+      messages[params.template] ?? `تحديث للطلب ${params.trackingCode}`;
 
     return this.send({
       phone: params.phone,
@@ -79,7 +80,7 @@ export class SmsService {
     tenantId?: string;
     orderId?: string;
   }) {
-    // تسجيل في DB أولاً
+    // Save the record to the database first.
     const log = await this.db.smsLog.create({
       data: {
         tenantId: params.tenantId,
@@ -92,7 +93,7 @@ export class SmsService {
     });
 
     try {
-      // TODO: استبدال بـ SMS provider حقيقي
+      // TODO: Replace this with a real SMS provider.
       this.logger.log(`📱 SMS to ${params.phone}: ${params.message}`);
 
       await this.db.smsLog.update({
