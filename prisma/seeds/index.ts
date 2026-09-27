@@ -1,4 +1,5 @@
 // prisma/seeds/index.ts
+import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { seedSuperAdmin } from './super-admin.seed';
 import { seedDemoTenant } from './demo-tenant.seed';

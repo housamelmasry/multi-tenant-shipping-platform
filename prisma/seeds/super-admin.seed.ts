@@ -5,9 +5,17 @@ import * as bcrypt from 'bcryptjs';
 export async function seedSuperAdmin(prisma: PrismaClient) {
   console.log('👤 التحقق من Super Admin...');
 
-  const email = process.env.SUPER_ADMIN_EMAIL ?? 'admin@shipping.com';
-  const password = process.env.SUPER_ADMIN_PASSWORD ?? 'Admin@123456';
+  const email = process.env.SUPER_ADMIN_EMAIL;
+  const password = process.env.SUPER_ADMIN_PASSWORD;
   const name = process.env.SUPER_ADMIN_NAME ?? 'Super Admin';
+
+  if (!email) {
+    throw new Error('SUPER_ADMIN_EMAIL is required');
+  }
+
+  if (!password) {
+    throw new Error('SUPER_ADMIN_PASSWORD is required');
+  }
 
   // التحقق من الوجود المسبق
   const existing = await prisma.user.findUnique({
@@ -35,8 +43,6 @@ export async function seedSuperAdmin(prisma: PrismaClient) {
 
   console.log(`   ✅ تم إنشاء Super Admin`);
   console.log(`   📧 Email:    ${email}`);
-  console.log(`   🔑 Password: ${password}`);
-  console.log(`   ⚠️  يرجى تغيير كلمة المرور فور تسجيل الدخول\n`);
 
   return superAdmin;
 }

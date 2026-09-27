@@ -39,7 +39,7 @@ export class CreateDriverDto {
   @IsString()
   vehiclePlate: string;
 
-  @ApiProperty({ example: 'Driver@123456', minLength: 8 })
+  @ApiProperty({ example: 'your-password', minLength: 8 })
   @IsString()
   @MinLength(8)
   password: string;

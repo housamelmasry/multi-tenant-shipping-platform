@@ -17,12 +17,27 @@ export async function seedDemoTenant(prisma: PrismaClient) {
     return;
   }
 
+  const adminPassword = process.env.DEMO_TENANT_ADMIN_PASSWORD;
+  const driverPassword = process.env.DEMO_DRIVER_PASSWORD;
+
+  if (!adminPassword) {
+    throw new Error(
+      'DEMO_TENANT_ADMIN_PASSWORD is required for the development seed',
+    );
+  }
+
+  if (!driverPassword) {
+    throw new Error(
+      'DEMO_DRIVER_PASSWORD is required for the development seed',
+    );
+  }
+
   const apiKey = `sk_${crypto.randomBytes(24).toString('hex')}`;
   const apiSecret = `secret_${crypto.randomBytes(32).toString('hex')}`;
 
   const tenant = await prisma.tenant.create({
     data: {
-      name: 'شركة الشحن التجريبية',
+      name: 'Demo Shipping Company',
       slug: 'demo-shipping',
       plan: 'PRO',
       apiKey,
@@ -39,18 +54,17 @@ export async function seedDemoTenant(prisma: PrismaClient) {
   });
 
   console.log(`   ✅ Tenant: ${tenant.name}`);
-  console.log(`   🔑 API Key: ${apiKey}`);
 
   // ─── Tenant Admin ─────────────────────────────────────
 
-  const adminPassword = await bcrypt.hash('Admin@123456', 12);
+  const hashedAdminPassword = await bcrypt.hash(adminPassword, 12);
 
   const tenantAdmin = await prisma.user.create({
     data: {
       tenantId: tenant.id,
-      name: 'مدير الشركة',
-      email: 'manager@demo-shipping.com',
-      password: adminPassword,
+      name: 'Demo Tenant Admin',
+      email: 'manager@demo.invalid',
+      password: hashedAdminPassword,
       role: 'TENANT_ADMIN',
       isActive: true,
     },
@@ -62,9 +76,9 @@ export async function seedDemoTenant(prisma: PrismaClient) {
 
   const driversData = [
     {
-      name: 'أحمد محمد السيد',
-      phone: '+966501111111',
-      nationalId: '1234567890',
+      name: 'Demo Driver 1',
+      phone: '+966500000001',
+      nationalId: '0000000001',
       vehicleType: 'motorcycle',
       vehiclePlate: 'أ ب ج 1234',
       status: 'available',
@@ -72,9 +86,9 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       currentLng: 46.6753,
     },
     {
-      name: 'محمد علي حسن',
-      phone: '+966502222222',
-      nationalId: '0987654321',
+      name: 'Demo Driver 2',
+      phone: '+966500000002',
+      nationalId: '0000000002',
       vehicleType: 'car',
       vehiclePlate: 'د هـ و 5678',
       status: 'available',
@@ -82,9 +96,9 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       currentLng: 46.68,
     },
     {
-      name: 'خالد عبدالله الأحمد',
-      phone: '+966503333333',
-      nationalId: '1122334455',
+      name: 'Demo Driver 3',
+      phone: '+966500000003',
+      nationalId: '0000000003',
       vehicleType: 'van',
       vehiclePlate: 'ز ح ط 9012',
       status: 'offline',
@@ -93,7 +107,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
     },
   ];
 
-  const driverPassword = await bcrypt.hash('Driver@123456', 12);
+  const hashedDriverPassword = await bcrypt.hash(driverPassword, 12);
 
   for (const driverData of driversData) {
     const { status, currentLat, currentLng, ...rest } = driverData;
@@ -115,8 +129,8 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       data: {
         tenantId: tenant.id,
         name: driver.name,
-        email: `driver_${driver.id.slice(0, 8)}@demo.com`,
-        password: driverPassword,
+        email: `driver_${driver.id.slice(0, 8)}@demo.invalid`,
+        password: hashedDriverPassword,
         role: 'TENANT_STAFF',
         driverId: driver.id,
         isActive: true,
@@ -132,14 +146,14 @@ export async function seedDemoTenant(prisma: PrismaClient) {
     {
       trackingCode: 'SHP-DEMO0001',
       status: 'pending',
-      senderName: 'متجر الرياض الإلكتروني',
-      senderPhone: '+966511111111',
-      senderAddress: 'شارع الملك فهد، الرياض',
+      senderName: 'Demo Store',
+      senderPhone: '+966500000011',
+      senderAddress: 'Demo address, Riyadh',
       senderLat: 24.7136,
       senderLng: 46.6753,
-      recipientName: 'فاطمة أحمد',
-      recipientPhone: '+966522222222',
-      recipientAddress: 'حي النزهة، الرياض',
+      recipientName: 'Demo Recipient 1',
+      recipientPhone: '+966500000021',
+      recipientAddress: 'Demo address 1, Riyadh',
       recipientLat: 24.75,
       recipientLng: 46.71,
       codAmount: 150.0,
@@ -148,14 +162,14 @@ export async function seedDemoTenant(prisma: PrismaClient) {
     {
       trackingCode: 'SHP-DEMO0002',
       status: 'delivered',
-      senderName: 'متجر الرياض الإلكتروني',
-      senderPhone: '+966511111111',
-      senderAddress: 'شارع الملك فهد، الرياض',
+      senderName: 'Demo Store',
+      senderPhone: '+966500000011',
+      senderAddress: 'Demo address, Riyadh',
       senderLat: 24.7136,
       senderLng: 46.6753,
-      recipientName: 'محمد سعيد',
-      recipientPhone: '+966533333333',
-      recipientAddress: 'حي العليا، الرياض',
+      recipientName: 'Demo Recipient 2',
+      recipientPhone: '+966500000022',
+      recipientAddress: 'Demo address 2, Riyadh',
       recipientLat: 24.6877,
       recipientLng: 46.6857,
       codAmount: 0,
@@ -165,14 +179,14 @@ export async function seedDemoTenant(prisma: PrismaClient) {
     {
       trackingCode: 'SHP-DEMO0003',
       status: 'failed',
-      senderName: 'متجر جدة',
-      senderPhone: '+966544444444',
-      senderAddress: 'شارع التحلية، جدة',
+      senderName: 'Demo Store 2',
+      senderPhone: '+966500000012',
+      senderAddress: 'Demo address, Jeddah',
       senderLat: 21.5433,
       senderLng: 39.1728,
-      recipientName: 'سارة عبدالله',
-      recipientPhone: '+966555555555',
-      recipientAddress: 'حي الروضة، جدة',
+      recipientName: 'Demo Recipient 3',
+      recipientPhone: '+966500000023',
+      recipientAddress: 'Demo address 3, Jeddah',
       recipientLat: 21.58,
       recipientLng: 39.2,
       codAmount: 75.5,
@@ -222,7 +236,7 @@ export async function seedDemoTenant(prisma: PrismaClient) {
   });
 
   console.log(`   ✅ Demo Webhook configured`);
-  console.log('\n   📋 بيانات الدخول للـ Demo:');
-  console.log(`   Manager: manager@demo-shipping.com / Admin@123456`);
-  console.log(`   Driver:  driver_***@demo.com / Driver@123456`);
+  console.log(
+    '\n   Demo account passwords are supplied through environment variables.',
+  );
 }

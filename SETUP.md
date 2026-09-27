@@ -11,21 +11,23 @@
 
 ## 1. Environment Variables
 
-Copy `.env` and adjust values as needed (`.env` is already present in the repo):
+Create a local `.env` file from the example and set unique credentials:
 
 ```bash
-# Verify .env exists
-ls .env
+cp .env.example .env
 ```
 
-Key variables:
+Required values include:
 
-| Variable | Default | Description |
-|---|---|---|
-| `PORT` | `3000` | API server port |
-| `DATABASE_URL` | `postgresql://root:password@localhost:5432/shipping_db` | PostgreSQL connection string |
-| `REDIS_HOST` / `REDIS_PORT` | `localhost:6379` | Redis for Bull queues |
-| `JWT_SECRET` | `your-super-secret-key-here` | Change this in production |
+| Variable                                     | Description                                                            |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| `DATABASE_URL`                               | PostgreSQL connection string                                           |
+| `JWT_SECRET`                                 | Random JWT signing secret; generate one with `openssl rand -base64 32` |
+| `SUPER_ADMIN_EMAIL` / `SUPER_ADMIN_PASSWORD` | Initial super-admin account                                            |
+| `DEMO_TENANT_ADMIN_PASSWORD`                 | Development demo tenant-admin password                                 |
+| `DEMO_DRIVER_PASSWORD`                       | Development demo driver password                                       |
+
+The demo tenant is seeded only when `NODE_ENV=development`. Keep `.env` local and never commit it.
 
 ---
 
@@ -109,27 +111,27 @@ Swagger docs: `http://localhost:3000/docs`
 
 ### Database
 
-| Command | Description |
-|---|---|
-| `yarn db:fresh` | Drop all tables, re-run all migrations, then seed |
-| `yarn db:reset` | Reset database and seed (prompts for confirmation) |
-| `npx prisma studio` | Open Prisma Studio (GUI DB browser) |
-| `npx prisma migrate dev --name <name>` | Create a new migration after schema changes |
-| `npx prisma migrate deploy` | Apply migrations in production |
+| Command                                | Description                                        |
+| -------------------------------------- | -------------------------------------------------- |
+| `yarn db:fresh`                        | Drop all tables, re-run all migrations, then seed  |
+| `yarn db:reset`                        | Reset database and seed (prompts for confirmation) |
+| `npx prisma studio`                    | Open Prisma Studio (GUI DB browser)                |
+| `npx prisma migrate dev --name <name>` | Create a new migration after schema changes        |
+| `npx prisma migrate deploy`            | Apply migrations in production                     |
 
 ### Admin
 
-| Command | Description |
-|---|---|
+| Command             | Description                       |
+| ------------------- | --------------------------------- |
 | `yarn admin:create` | Create a new super admin from CLI |
 
 ### Code Quality
 
-| Command | Description |
-|---|---|
-| `yarn build` | Compile the project |
-| `yarn lint` | Lint and fix code |
-| `yarn test` | Run unit tests |
+| Command         | Description          |
+| --------------- | -------------------- |
+| `yarn build`    | Compile the project  |
+| `yarn lint`     | Lint and fix code    |
+| `yarn test`     | Run unit tests       |
 | `yarn test:e2e` | Run end-to-end tests |
 
 ---

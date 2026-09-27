@@ -2,178 +2,168 @@
 
 ## Install dependencies
 
-``` bash
+```bash
 yarn
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Start PostgreSQL (Homebrew)
 
-``` bash
+```bash
 brew services start postgresql@18
 ```
 
 Check status:
 
-``` bash
+```bash
 brew services list
 ```
 
 Check database is accepting connections:
 
-``` bash
+```bash
 pg_isready
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Connect to PostgreSQL
 
-``` bash
+```bash
 psql -U postgres
 ```
 
 Connect to the project database:
 
-``` bash
+```bash
 psql -U postgres -d shipping_db
 ```
 
 List databases:
 
-``` sql
+```sql
 \l
 ```
 
 List tables:
 
-``` sql
+```sql
 \dt
 ```
 
 Exit:
 
-``` sql
+```sql
 \q
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Prisma
 
 Generate Prisma Client:
 
-``` bash
+```bash
 npx prisma generate
 ```
 
 Create/apply migrations:
 
-``` bash
+```bash
 npx prisma migrate dev --name init
 ```
 
 Reset database and re-run all migrations:
 
-``` bash
+```bash
 npx prisma migrate reset
 ```
 
 Sync schema from an existing database (Database First only):
 
-``` bash
+```bash
 npx prisma db pull
 ```
 
 Open Prisma Studio:
 
-``` bash
+```bash
 npx prisma studio
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Seed Database
 
-``` bash
+```bash
 yarn seed
 ```
 
 or
 
-``` bash
+```bash
 npm run seed
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Run the API
 
 Development:
 
-``` bash
+```bash
 yarn start:dev
 ```
 
 Production build:
 
-``` bash
+```bash
 yarn build
 ```
 
 Run production build:
 
-``` bash
+```bash
 yarn start:prod
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Useful Yarn Scripts
 
-``` bash
+```bash
 yarn db:fresh
 ```
 
 Runs:
 
--   prisma migrate dev
--   seed
+- prisma migrate dev
+- seed
 
-``` bash
+```bash
 yarn db:reset
 ```
 
 Runs:
 
--   prisma migrate reset --force
--   seed
+- prisma migrate reset --force
+- seed
 
 Create Admin User:
 
-``` bash
+```bash
 yarn admin:create
 ```
 
-------------------------------------------------------------------------
+---
 
 ## Environment
 
-``` env
-DATABASE_URL="postgresql://postgres:123456@localhost:5432/shipping_db"
-```
+Copy `.env.example` to `.env` and set the required database URL, JWT secret, and unique seed passwords.
 
-------------------------------------------------------------------------
+---
 
-## Demo Credentials
+## Seed Accounts
 
-### Super Admin
-
--   Email: admin@shipping.com
--   Password: Admin@123456
-
-### Tenant Manager
-
--   Email: manager@demo-shipping.com
--   Password: Admin@123456
+The seed reads credentials from `SUPER_ADMIN_EMAIL`, `SUPER_ADMIN_PASSWORD`, `DEMO_TENANT_ADMIN_PASSWORD`, and `DEMO_DRIVER_PASSWORD`. It does not print passwords; use the configured values to sign in.
