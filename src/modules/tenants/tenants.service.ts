@@ -15,7 +15,8 @@ import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { QueryTenantDto } from './dto/query-tenant.dto';
 import { RegenerateApiKeyDto } from './dto/regenerate-api-key.dto';
 import { UserRole } from '@common/enums';
-import { I18nHelper } from '@i18n/i18n.utils';
+import { I18nContext } from 'nestjs-i18n';
+import { I18nHelper, withLang } from '@i18n/i18n.utils';
 import * as bcrypt from 'bcryptjs';
 import * as crypto from 'crypto';
 
@@ -42,6 +43,7 @@ export class TenantsService {
     const hashedPassword = await bcrypt.hash(dto.adminPassword, 12);
 
     // 4. Create the tenant and administrator in a transaction.
+    const adminLang = withLang(dto.adminLang ?? I18nContext.current()?.lang);
     const tenant = await this.db.$transaction(async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
@@ -60,6 +62,7 @@ export class TenantsService {
           email: dto.adminEmail,
           password: hashedPassword,
           role: UserRole.TENANT_ADMIN,
+          lang: adminLang,
         },
       });
 

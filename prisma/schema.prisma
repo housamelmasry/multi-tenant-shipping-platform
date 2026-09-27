@@ -177,6 +177,10 @@ model ReturnRequest {
   warehouseLat    Decimal? @map("warehouse_lat") @db.Decimal(10, 8)
   warehouseLng    Decimal? @map("warehouse_lng") @db.Decimal(11, 8)
 
+  // Language the warehouse contact is addressed in (OTP SMS). Separate from
+  // Order.recipientLang because that describes the end customer, not staff.
+  warehouseLang   String   @default("ar") @map("warehouse_lang")
+
   status          String   @default("pending")
 
   productPhoto    String?  @map("product_photo")

@@ -2,12 +2,17 @@ import {
   IsString,
   IsEmail,
   IsEnum,
+  IsIn,
   IsOptional,
   MinLength,
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { VehicleType } from '@common/enums';
+import {
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from '@i18n/i18n.constants';
 
 export class CreateDriverDto {
   @ApiProperty({ example: 'Demo Driver' })
@@ -45,4 +50,16 @@ export class CreateDriverDto {
   @IsString()
   @MinLength(8)
   password: string;
+
+  /**
+   * Language the driver's notifications are sent in (FCM).
+   *
+   * Stored on the driver because notifications are pushed asynchronously, long
+   * after the request that created the driver is gone, so there is no request
+   * locale to read at send time. Defaults to the creating request's language.
+   */
+  @ApiPropertyOptional({ example: 'ar', enum: ['ar', 'en'] })
+  @IsOptional()
+  @IsIn([...SUPPORTED_LANGUAGES])
+  lang?: SupportedLanguage;
 }

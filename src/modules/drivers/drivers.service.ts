@@ -11,7 +11,8 @@ import { UpdateLocationDto } from './dto/update-location.dto';
 import { QueryDriversDto } from './dto/query-drivers.dto';
 import { DriverStatus, UserRole } from '@common/enums';
 import { TrackingGateway } from '@modules/tracking/tracking.gateway';
-import { I18nHelper } from '@i18n/i18n.utils';
+import { I18nContext } from 'nestjs-i18n';
+import { I18nHelper, withLang } from '@i18n/i18n.utils';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
@@ -35,6 +36,10 @@ export class DriversService {
 
     const hashedPassword = await bcrypt.hash(dto.password, 12);
 
+    // Notifications are pushed asynchronously, so the driver's language has to
+    // be captured now; an explicit `lang` in the body wins over the request.
+    const lang = withLang(dto.lang ?? I18nContext.current()?.lang);
+
     // Create the driver and user account in a transaction.
     const driver = await this.db.$transaction(async (tx) => {
       const newDriver = await tx.driver.create({
@@ -47,6 +52,7 @@ export class DriversService {
           vehicleType: dto.vehicleType,
           vehiclePlate: dto.vehiclePlate,
           status: DriverStatus.OFFLINE,
+          lang,
         },
       });
 
@@ -59,6 +65,7 @@ export class DriversService {
           password: hashedPassword,
           role: UserRole.TENANT_STAFF,
           driverId: newDriver.id, // Link the user account to the driver.
+          lang, // Same preference as the driver record.
         },
       });
 

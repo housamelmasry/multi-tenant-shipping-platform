@@ -3,11 +3,17 @@ import {
   IsString,
   IsEmail,
   IsEnum,
+  IsIn,
+  IsOptional,
   MinLength,
   MaxLength,
   Matches,
 } from 'class-validator';
 import { Plan } from '@common/enums';
+import {
+  SUPPORTED_LANGUAGES,
+  type SupportedLanguage,
+} from '@i18n/i18n.constants';
 
 export class CreateTenantDto {
   @IsString()
@@ -34,4 +40,12 @@ export class CreateTenantDto {
   @IsString()
   @MinLength(8)
   adminPassword: string;
+
+  /**
+   * Language for the initial administrator's messages. Defaults to the
+   * language of the request that creates the tenant.
+   */
+  @IsOptional()
+  @IsIn([...SUPPORTED_LANGUAGES])
+  adminLang?: SupportedLanguage;
 }

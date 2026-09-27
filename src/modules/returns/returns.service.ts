@@ -13,7 +13,8 @@ import { QueryReturnsDto } from './dto/query-returns.dto';
 import { WebhooksService } from '@modules/webhooks/webhooks.service';
 import { NotificationsService } from '@modules/notifications/notifications.service';
 import { SmsService } from '@modules/sms/sms.service';
-import { I18nHelper } from '@i18n/i18n.utils';
+import { I18nHelper, withLang } from '@i18n/i18n.utils';
+import { I18nContext } from 'nestjs-i18n';
 import {
   ReturnStatus,
   ReturnStatusMeta,
@@ -85,6 +86,11 @@ export class ReturnsService {
           warehouseAddress: dto.warehouse.address,
           warehouseLat: dto.warehouse.lat,
           warehouseLng: dto.warehouse.lng,
+          // Captured now because the warehouse OTP is sent later, from a
+          // different request. Explicit `warehouse.lang` wins over the locale.
+          warehouseLang: withLang(
+            dto.warehouse.lang ?? I18nContext.current()?.lang,
+          ),
           status: ReturnStatus.PENDING,
         },
       });
@@ -358,12 +364,14 @@ export class ReturnsService {
       data: { otpCode, otpExpiresAt },
     });
 
-    // Send an OTP to the warehouse contact.
+    // Send an OTP to the warehouse contact, in the warehouse's language
+    // (not the end customer's — see ReturnRequest.warehouseLang).
     await this.smsService.sendReturnOtp({
       phone: returnRequest.warehousePhone,
       orderId: returnRequest.orderId,
       code: otpCode,
       tenantId,
+      lang: returnRequest.warehouseLang,
     });
 
     return { message: this.i18n.t('errors.return.otp_sent') };
