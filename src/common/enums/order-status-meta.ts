@@ -11,15 +11,16 @@ const TRANSITIONS: Record<OrderStatus, OrderStatus[]> = {
   [OrderStatus.CANCELLED]: [],
 };
 
-const LABELS: Record<OrderStatus, string> = {
-  [OrderStatus.PENDING]: 'قيد الانتظار',
-  [OrderStatus.ASSIGNED]: 'تم التعيين',
-  [OrderStatus.PICKED_UP]: 'تم الاستلام',
-  [OrderStatus.IN_TRANSIT]: 'قيد التوصيل',
-  [OrderStatus.DELIVERED]: 'تم التوصيل',
-  [OrderStatus.FAILED]: 'فشل التوصيل',
-  [OrderStatus.RETURNED]: 'تم الإرجاع',
-  [OrderStatus.CANCELLED]: 'ملغي',
+/** i18n key for this status' display label, e.g. `errors.order_status.pending`. */
+const LABEL_KEYS: Record<OrderStatus, string> = {
+  [OrderStatus.PENDING]: 'errors.order_status.pending',
+  [OrderStatus.ASSIGNED]: 'errors.order_status.assigned',
+  [OrderStatus.PICKED_UP]: 'errors.order_status.picked_up',
+  [OrderStatus.IN_TRANSIT]: 'errors.order_status.in_transit',
+  [OrderStatus.DELIVERED]: 'errors.order_status.delivered',
+  [OrderStatus.FAILED]: 'errors.order_status.failed',
+  [OrderStatus.RETURNED]: 'errors.order_status.returned',
+  [OrderStatus.CANCELLED]: 'errors.order_status.cancelled',
 };
 
 const FINAL_STATUSES: OrderStatus[] = [
@@ -34,8 +35,12 @@ export class OrderStatusMeta {
     return TRANSITIONS[from] ?? [];
   }
 
-  static label(status: OrderStatus): string {
-    return LABELS[status] ?? status;
+  /**
+   * i18n key for the status label. Pass the result to I18nHelper.translate()
+   * rather than rendering it directly.
+   */
+  static labelKey(status: OrderStatus): string {
+    return LABEL_KEYS[status] ?? `errors.order_status.${status}`;
   }
 
   static isFinal(status: OrderStatus): boolean {

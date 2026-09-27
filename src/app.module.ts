@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bull';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -15,11 +15,20 @@ import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '@common/guards/jwt-auth.guard';
 import { RolesGuard } from '@common/guards/roles.guard';
-import { I18nModule, AcceptLanguageResolver, QueryResolver } from 'nestjs-i18n';
+import { I18nModule, I18nMiddleware } from 'nestjs-i18n';
+import { LanguageResolver } from './i18n/language.resolver';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PdplModule } from './modules/pdpl/pdpl.module';
 import * as path from 'path';
+import appConfig from './config/app.config';
+
+import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from './i18n/i18n.constants';
+import type { SupportedLanguage } from './i18n/i18n.constants';
+import { I18nHelperModule } from './i18n/i18n.module';
+
+export { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES };
+export type { SupportedLanguage };
 
 @Module({
   imports: [
@@ -27,18 +36,21 @@ import * as path from 'path';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+      // appConfig groups values under a namespace (app.publicUrl, ...), which
+      // is what SmsService reads to build customer tracking links.
+      load: [appConfig],
     }),
     I18nModule.forRoot({
-      fallbackLanguage: 'ar', // Arabic is the fallback language.
+      fallbackLanguage: DEFAULT_LANGUAGE,
       loaderOptions: {
-        path: path.join(process.cwd(), 'src', 'i18n'),
+        // Resolved relative to this file so it works both under ts-node
+        // (src/i18n) and after a build (dist/src/i18n).
+        path: path.join(__dirname, 'i18n'),
         watch: false,
       },
-      resolvers: [
-        // Resolve the language from the header or query string.
-        { use: QueryResolver, options: ['lang'] },
-        AcceptLanguageResolver,
-      ],
+      // Single resolver: `?lang=` first, then Accept-Language, each normalized
+      // to a shipped language. The stock resolvers do not normalize.
+      resolvers: [LanguageResolver],
     }),
     BullModule.forRootAsync({
       inject: [ConfigService],
@@ -64,6 +76,9 @@ import * as path from 'path';
 
     // Redis
     RedisModule,
+
+    // Translation helper (I18nService is provided by the global I18nModule)
+    I18nHelperModule,
 
     // Rate Limiting
     ThrottlerModule.forRootAsync({
@@ -111,4 +126,10 @@ import * as path from 'path';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    // Populates the AsyncLocalStorage that I18nContext/I18nService read from.
+    // Without this every translation call silently falls back.
+    consumer.apply(I18nMiddleware).forRoutes('*');
+  }
+}

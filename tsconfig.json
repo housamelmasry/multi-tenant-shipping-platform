@@ -17,7 +17,8 @@
       "@common/*": ["common/*"],
       "@modules/*": ["modules/*"],
       "@config/*": ["config/*"],
-      "@database/*": ["database/*"]
+      "@database/*": ["database/*"],
+      "@i18n/*": ["i18n/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

@@ -1,24 +1,135 @@
 {
+  "common": {
+    "unauthorized": "يرجى تسجيل الدخول أولاً",
+    "forbidden": "ليس لديك صلاحية الوصول",
+    "forbidden_tenant": "ليس لديك صلاحية الوصول لهذه الشركة",
+    "rate_limited": "تجاوزت الحد المسموح به من الطلبات، يرجى المحاولة لاحقاً",
+    "rate_limited_api_key": "تجاوزت الحد اليومي للـ API ({limit} طلب/يوم)",
+    "internal_error": "حدث خطأ داخلي في الخادم، يرجى المحاولة لاحقاً",
+    "file_type_unsupported": "نوع الملف غير مدعوم",
+    "bad_request": "طلب غير صالح"
+  },
+  "auth": {
+    "invalid_credentials": "بيانات الدخول غير صحيحة",
+    "invalid_api_key": "مفتاح الـ API غير صالح",
+    "user_not_found_or_inactive": "المستخدم غير موجود أو غير نشط",
+    "unauthorized": "غير مصرح"
+  },
+  "user": {
+    "not_found": "المستخدم غير موجود",
+    "invalid_password": "كلمة المرور غير صحيحة"
+  },
   "driver": {
     "not_found": "السائق غير موجود",
     "busy": "السائق مشغول حالياً",
-    "inactive": "السائق غير نشط"
+    "inactive": "السائق غير نشط",
+    "phone_in_use": "رقم الهاتف مستخدم بالفعل",
+    "status_change_during_delivery": "لا يمكن تغيير الحالة أثناء التوصيل"
   },
   "order": {
     "not_found": "الطلب غير موجود",
+    "invalid_tracking_code": "رقم التتبع غير صحيح",
+    "not_assigned_to_you": "هذا الطلب غير مخصص لك",
+    "not_in_delivery_state": "الطلب ليس في حالة التوصيل",
     "invalid_transition": "لا يمكن الانتقال من {from} إلى {to}",
+    "cannot_assign_in_current_status": "لا يمكن تعيين سائق لهذا الطلب في حالته الحالية",
+    "cannot_cancel_in_current_status": "لا يمكن إلغاء هذا الطلب في حالته الحالية",
+    "only_pending_can_be_assigned": "يمكن تعيين الطلبات المعلقة فقط",
+    "missing_sender_coordinates": "الطلب لا يحتوي على إحداثيات المرسل",
+    "no_nearby_driver": "لا يوجد سائق متاح قريب",
+    "otp_required": "يجب طلب رمز التحقق أولاً",
+    "otp_required_for_delivery": "يجب التحقق من OTP أولاً لإتمام التسليم",
     "otp_expired": "انتهت صلاحية رمز التحقق",
-    "otp_invalid": "رمز التحقق غير صحيح"
+    "otp_expired_request_new": "انتهت صلاحية رمز التحقق، يرجى طلب رمز جديد",
+    "otp_invalid": "رمز التحقق غير صحيح",
+    "otp_sent": "تم إرسال رمز التحقق للعميل",
+    "delivered_successfully": "تم التسليم بنجاح",
+    "history_driver_assigned": "تم تعيين السائق {name}",
+    "history_auto_assigned": "تعيين تلقائي: {name} ({distance} كم)",
+    "history_delivered": "تم التسليم بنجاح مع التحقق من OTP",
+    "bulk_assign_failed": "الطلب {trackingCode}: {reason}"
+  },
+  "order_status": {
+    "pending": "قيد الانتظار",
+    "assigned": "تم التعيين",
+    "picked_up": "تم الاستلام",
+    "in_transit": "قيد التوصيل",
+    "delivered": "تم التسليم",
+    "failed": "فشل التوصيل",
+    "returned": "تم الإرجاع",
+    "cancelled": "ملغي"
   },
   "return": {
+    "not_found": "طلب الإرجاع غير موجود",
     "invalid_transition": "لا يمكن الانتقال من {from} إلى {to}",
-    "status": {
-      "pending": "بانتظار السائق",
-      "assigned": "تم التعيين",
-      "picked_up": "تم الاستلام من العميل",
-      "in_transit": "في الطريق للمستودع",
-      "returned": "تم الإرجاع للمستودع",
-      "cancelled": "ملغي"
-    }
+    "cannot_create_in_current_status": "لا يمكن إنشاء طلب إرجاع لهذا الطلب في حالته الحالية",
+    "already_exists": "يوجد طلب إرجاع مفتوح لهذه الشحنة بالفعل",
+    "not_assigned_to_you": "هذا الطلب غير مخصص لك",
+    "not_in_transit_to_warehouse": "الطلب ليس في طريقه للمستودع",
+    "cannot_assign_in_current_status": "لا يمكن تعيين سائق لهذا الطلب في حالته الحالية",
+    "cannot_cancel_in_current_status": "لا يمكن إلغاء هذا الطلب في حالته الحالية",
+    "otp_required": "يجب طلب رمز التحقق أولاً",
+    "otp_required_for_return": "يجب التحقق من OTP أولاً لإتمام الإرجاع",
+    "otp_expired": "انتهت صلاحية رمز التحقق",
+    "otp_invalid": "رمز التحقق غير صحيح",
+    "otp_sent": "تم إرسال رمز التحقق لموظف المستودع",
+    "completed_successfully": "تم الإرجاع للمستودع بنجاح",
+    "cancelled": "تم إلغاء طلب الإرجاع",
+    "history_created": "تم إنشاء طلب الإرجاع",
+    "history_driver_assigned": "تم تعيين السائق {name}",
+    "history_returned": "تم الإرجاع للمستودع بنجاح مع التحقق من OTP"
+  },
+  "return_status": {
+    "pending": "بانتظار السائق",
+    "assigned": "تم التعيين",
+    "picked_up": "تم الاستلام من العميل",
+    "in_transit": "في الطريق للمستودع",
+    "returned": "تم الإرجاع للمستودع",
+    "cancelled": "ملغي"
+  },
+  "return_reason": {
+    "customer_refused": "رفض العميل الاستلام",
+    "wrong_item": "منتج خاطئ",
+    "damaged_item": "منتج تالف",
+    "customer_requested": "طلب العميل الإرجاع",
+    "max_attempts": "تجاوز عدد محاولات التسليم",
+    "other": "سبب آخر"
+  },
+  "tenant": {
+    "not_found": "الشركة غير موجودة",
+    "slug_in_use": "هذا المعرف (slug) مستخدم بالفعل",
+    "email_in_use": "هذا البريد الإلكتروني مستخدم بالفعل"
+  },
+  "storage": {
+    "image_processing_failed": "فشل في معالجة الصورة: {reason}",
+    "no_file_uploaded": "لم يتم رفع أي ملف",
+    "unsupported_file_type": "نوع الملف غير مدعوم ({mime}). الأنواع المسموحة: {allowed}",
+    "file_too_large": "حجم الملف كبير جداً ({size}). الحد الأقصى: {max}"
+  },
+  "pdpl": {
+    "order_not_found": "الطلب غير موجود",
+    "driver_not_found": "السائق غير موجود",
+    "consent_withdrawn": "تم سحب الموافقة بنجاح",
+    "retention_info": "يتم الاحتفاظ ببياناتك لمدة 3 سنوات وفقاً لسياسة الخصوصية",
+    "anonymized": "تم إخفاء البيانات الشخصية بنجاح",
+    "cannot_delete_driver": "لا يمكن حذف بيانات السائق لوجود طلبات نشطة",
+    "driver_data_deleted": "تم حذف البيانات الشخصية للسائق بنجاح"
+  },
+  "webhook": {
+    "url_already_registered": "هذا الرابط مسجل بالفعل",
+    "not_found": "الـ Webhook غير موجود",
+    "log_not_found": "سجل المحاولات غير موجود",
+    "already_sent": "هذا الإشعار تم إرساله بنجاح مسبقاً",
+    "deleted": "تم الحذف بنجاح",
+    "rescheduled": "تمت إعادة الجدولة بنجاح"
+  },
+  "tracking": {
+    "invalid_tracking_code": "رمز التتبع غير صحيح"
+  },
+  "notification": {
+    "fcm_token_updated": "تم تحديث رمز الإشعارات بنجاح",
+    "updated": "تم التحديث",
+    "all_marked_read": "تم تحديد الكل كمقروء",
+    "no_drivers_to_notify": "لا يوجد سائقون لإرسال الإشعار إليهم"
   }
 }

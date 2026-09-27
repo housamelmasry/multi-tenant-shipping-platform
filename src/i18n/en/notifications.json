@@ -1,1 +1,16 @@
-{}
+{
+  "title": {
+    "new_order": "New Delivery Order 🚚",
+    "new_return": "New Return Request 📦",
+    "order_cancelled": "Order Cancelled",
+    "reminder": "Pending Order Reminder ⏰",
+    "announcement": "Admin Announcement 📢"
+  },
+  "body": {
+    "new_order": "New order — {trackingCode} — {address}",
+    "new_return": "Return request — go to {warehouseAddress}",
+    "order_cancelled": "Order {trackingCode} was cancelled",
+    "reminder": "You have a pending order — {trackingCode}",
+    "announcement": "{body}"
+  }
+}

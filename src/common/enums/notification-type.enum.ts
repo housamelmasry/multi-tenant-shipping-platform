@@ -11,23 +11,13 @@ export type NotificationType =
   (typeof NotificationType)[keyof typeof NotificationType];
 
 export const NotificationMeta = {
-  title: (type: NotificationType, lang = 'ar'): string => {
-    const titles: Record<string, Record<NotificationType, string>> = {
-      ar: {
-        new_order: 'طلب توصيل جديد 🚚',
-        new_return: 'طلب إرجاع جديد 📦',
-        order_cancelled: 'تم إلغاء الطلب',
-        reminder: 'تذكير بطلب معلق ⏰',
-        announcement: 'إشعار من الإدارة 📢',
-      },
-      en: {
-        new_order: 'New Delivery Order 🚚',
-        new_return: 'New Return Request 📦',
-        order_cancelled: 'Order Cancelled',
-        reminder: 'Pending Order Reminder ⏰',
-        announcement: 'Admin Announcement 📢',
-      },
-    };
-    return titles[lang]?.[type] ?? titles['ar'][type];
-  },
+  /**
+   * i18n keys for the title and body of a notification type. Pass these to
+   * I18nHelper.translate() rather than rendering them directly — the
+   * notification is stored in the database in the recipient's language.
+   */
+  keys: (type: NotificationType) => ({
+    title: `notifications.title.${type}`,
+    body: `notifications.body.${type}`,
+  }),
 };

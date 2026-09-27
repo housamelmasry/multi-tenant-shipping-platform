@@ -1,6 +1,7 @@
 // src/common/config/multer.config.ts
 import { memoryStorage } from 'multer';
 import { BadRequestException } from '@nestjs/common';
+import { translate } from '@i18n/i18n.utils';
 
 export const multerConfig = {
   storage: memoryStorage(), // Temporarily store files in memory.
@@ -19,7 +20,12 @@ export const multerConfig = {
     if (allowed.includes(file.mimetype)) {
       callback(null, true);
     } else {
-      callback(new BadRequestException('نوع الملف غير مدعوم'), false);
+      callback(
+        new BadRequestException(
+          translate('errors.common.file_type_unsupported'),
+        ),
+        false,
+      );
     }
   },
 };

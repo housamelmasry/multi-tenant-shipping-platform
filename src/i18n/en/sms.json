@@ -1,7 +1,7 @@
 {
   "otp": {
     "delivery": "Hi {recipientName},\nYour delivery OTP for order {trackingCode} is:\n{code}\nValid for 10 minutes\n{senderName}",
-    "return": "Return confirmation OTP for order {orderId}:\n{code}\nValid for 10 minutes"
+    "return": "Hi,\nReturn confirmation OTP for order {orderId}:\n{code}\nValid for 10 minutes"
   },
   "order": {
     "created": "Hi {recipientName},\nYour order has been placed\nTracking: {trackingCode}\nTrack here: {trackingUrl}",

@@ -1,13 +1,135 @@
 {
-  "return": {
+  "common": {
+    "unauthorized": "Please sign in first",
+    "forbidden": "You do not have permission to access this resource",
+    "forbidden_tenant": "You do not have permission to access this tenant",
+    "rate_limited": "Too many requests, please try again later",
+    "rate_limited_api_key": "Daily API limit exceeded ({limit} requests/day)",
+    "internal_error": "An internal server error occurred, please try again later",
+    "file_type_unsupported": "Unsupported file type",
+    "bad_request": "Invalid request"
+  },
+  "auth": {
+    "invalid_credentials": "Invalid credentials",
+    "invalid_api_key": "Invalid API key",
+    "user_not_found_or_inactive": "User not found or inactive",
+    "unauthorized": "Unauthorized"
+  },
+  "user": {
+    "not_found": "User not found",
+    "invalid_password": "Invalid password"
+  },
+  "driver": {
+    "not_found": "Driver not found",
+    "busy": "Driver is currently busy",
+    "inactive": "Driver is not active",
+    "phone_in_use": "Phone number is already in use",
+    "status_change_during_delivery": "Cannot change status during delivery"
+  },
+  "order": {
+    "not_found": "Order not found",
+    "invalid_tracking_code": "Invalid tracking code",
+    "not_assigned_to_you": "This order is not assigned to you",
+    "not_in_delivery_state": "Order is not in the delivery state",
     "invalid_transition": "Cannot transition from {from} to {to}",
-    "status": {
-      "pending": "Awaiting driver",
-      "assigned": "Assigned",
-      "picked_up": "Picked up from customer",
-      "in_transit": "In transit to warehouse",
-      "returned": "Returned to warehouse",
-      "cancelled": "Canceled"
-    }
+    "cannot_assign_in_current_status": "Cannot assign a driver to this order in its current status",
+    "cannot_cancel_in_current_status": "Cannot cancel this order in its current status",
+    "only_pending_can_be_assigned": "Only pending orders can be assigned",
+    "missing_sender_coordinates": "Order does not contain sender coordinates",
+    "no_nearby_driver": "No available driver nearby",
+    "otp_required": "You must request a verification code first",
+    "otp_required_for_delivery": "OTP verification is required to complete delivery",
+    "otp_expired": "Verification code has expired",
+    "otp_expired_request_new": "Verification code has expired, please request a new one",
+    "otp_invalid": "Invalid verification code",
+    "otp_sent": "Verification code sent to the customer",
+    "delivered_successfully": "Delivered successfully",
+    "history_driver_assigned": "Driver {name} assigned",
+    "history_auto_assigned": "Auto-assigned: {name} ({distance} km)",
+    "history_delivered": "Delivered successfully with OTP verification",
+    "bulk_assign_failed": "Order {trackingCode}: {reason}"
+  },
+  "order_status": {
+    "pending": "Pending",
+    "assigned": "Assigned",
+    "picked_up": "Picked up",
+    "in_transit": "In transit",
+    "delivered": "Delivered",
+    "failed": "Delivery failed",
+    "returned": "Returned",
+    "cancelled": "Canceled"
+  },
+  "return": {
+    "not_found": "Return request not found",
+    "invalid_transition": "Cannot transition from {from} to {to}",
+    "cannot_create_in_current_status": "Cannot create a return request for this order in its current status",
+    "already_exists": "An open return request already exists for this shipment",
+    "not_assigned_to_you": "This return is not assigned to you",
+    "not_in_transit_to_warehouse": "Return is not in transit to the warehouse",
+    "cannot_assign_in_current_status": "Cannot assign a driver to this return in its current status",
+    "cannot_cancel_in_current_status": "Cannot cancel this return in its current status",
+    "otp_required": "You must request a verification code first",
+    "otp_required_for_return": "OTP verification is required to complete the return",
+    "otp_expired": "Verification code has expired",
+    "otp_invalid": "Invalid verification code",
+    "otp_sent": "Verification code sent to the warehouse staff",
+    "completed_successfully": "Returned to the warehouse successfully",
+    "cancelled": "Return request canceled",
+    "history_created": "Return request created",
+    "history_driver_assigned": "Driver {name} assigned",
+    "history_returned": "Returned to the warehouse successfully with OTP verification"
+  },
+  "return_status": {
+    "pending": "Awaiting driver",
+    "assigned": "Assigned",
+    "picked_up": "Picked up from customer",
+    "in_transit": "In transit to warehouse",
+    "returned": "Returned to warehouse",
+    "cancelled": "Canceled"
+  },
+  "return_reason": {
+    "customer_refused": "Customer refused delivery",
+    "wrong_item": "Wrong item",
+    "damaged_item": "Damaged item",
+    "customer_requested": "Customer requested return",
+    "max_attempts": "Maximum delivery attempts exceeded",
+    "other": "Other reason"
+  },
+  "tenant": {
+    "not_found": "Tenant not found",
+    "slug_in_use": "This slug is already in use",
+    "email_in_use": "This email is already in use"
+  },
+  "storage": {
+    "image_processing_failed": "Failed to process image: {reason}",
+    "no_file_uploaded": "No file was uploaded",
+    "unsupported_file_type": "Unsupported file type ({mime}). Allowed types: {allowed}",
+    "file_too_large": "File is too large ({size}). Maximum size: {max}"
+  },
+  "pdpl": {
+    "order_not_found": "Order not found",
+    "driver_not_found": "Driver not found",
+    "consent_withdrawn": "Consent withdrawn successfully",
+    "retention_info": "Your data is retained for 3 years in accordance with the privacy policy",
+    "anonymized": "Personal data anonymized successfully",
+    "cannot_delete_driver": "Cannot delete driver data while active orders exist",
+    "driver_data_deleted": "Driver personal data deleted successfully"
+  },
+  "webhook": {
+    "url_already_registered": "This URL is already registered",
+    "not_found": "Webhook not found",
+    "log_not_found": "Delivery log not found",
+    "already_sent": "This event has already been delivered successfully",
+    "deleted": "Deleted successfully",
+    "rescheduled": "Rescheduled successfully"
+  },
+  "tracking": {
+    "invalid_tracking_code": "Invalid tracking code"
+  },
+  "notification": {
+    "fcm_token_updated": "Notification token updated successfully",
+    "updated": "Updated",
+    "all_marked_read": "All notifications marked as read",
+    "no_drivers_to_notify": "There are no drivers to send this notification to"
   }
 }

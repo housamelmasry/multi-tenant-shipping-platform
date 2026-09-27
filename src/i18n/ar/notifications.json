@@ -1,1 +1,16 @@
-{}
+{
+  "title": {
+    "new_order": "طلب توصيل جديد 🚚",
+    "new_return": "طلب إرجاع جديد 📦",
+    "order_cancelled": "تم إلغاء الطلب",
+    "reminder": "تذكير بطلب معلق ⏰",
+    "announcement": "إشعار من الإدارة 📢"
+  },
+  "body": {
+    "new_order": "طلب جديد — {trackingCode} — {address}",
+    "new_return": "طلب إرجاع — يرجى التوجه إلى {warehouseAddress}",
+    "order_cancelled": "تم إلغاء الطلب {trackingCode}",
+    "reminder": "لديك طلب معلق منذ فترة — {trackingCode}",
+    "announcement": "{body}"
+  }
+}

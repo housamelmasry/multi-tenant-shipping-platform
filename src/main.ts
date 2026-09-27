@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { LocalizedValidationPipe } from './common/pipes/localized-validation.pipe';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { PrivacyInterceptor } from './common/interceptors/privacy.interceptor';
@@ -12,14 +12,8 @@ async function bootstrap() {
   // Global prefix
   app.setGlobalPrefix('api/v1');
 
-  // Validation
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true, // Remove fields not declared in the DTO.
-      forbidNonWhitelisted: true,
-      transform: true, // Automatically transform values to their declared types.
-    }),
-  );
+  // Validation — localized via the `validation` catalog.
+  app.useGlobalPipes(new LocalizedValidationPipe());
 
   // Global filters & interceptors
   app.useGlobalFilters(new HttpExceptionFilter());

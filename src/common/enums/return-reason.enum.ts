@@ -10,14 +10,20 @@ export const ReturnReason = {
 
 export type ReturnReason = (typeof ReturnReason)[keyof typeof ReturnReason];
 
+const REASON_LABEL_KEYS: Record<ReturnReason, string> = {
+  customer_refused: 'errors.return_reason.customer_refused',
+  wrong_item: 'errors.return_reason.wrong_item',
+  damaged_item: 'errors.return_reason.damaged_item',
+  customer_requested: 'errors.return_reason.customer_requested',
+  max_attempts: 'errors.return_reason.max_attempts',
+  other: 'errors.return_reason.other',
+};
+
 export const ReturnReasonMeta = {
-  label: (reason: ReturnReason): string =>
-    ({
-      customer_refused: 'رفض العميل الاستلام',
-      wrong_item: 'منتج خاطئ',
-      damaged_item: 'منتج تالف',
-      customer_requested: 'طلب العميل الإرجاع',
-      max_attempts: 'تجاوز عدد محاولات التسليم',
-      other: 'سبب آخر',
-    })[reason],
+  /**
+   * i18n key for the reason's display label. Pass the result to
+   * I18nHelper.translate() rather than rendering it directly.
+   */
+  labelKey: (reason: ReturnReason): string =>
+    REASON_LABEL_KEYS[reason] ?? `errors.return_reason.${reason}`,
 };
