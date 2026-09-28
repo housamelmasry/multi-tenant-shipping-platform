@@ -1,5 +1,5 @@
 // src/i18n/language.resolver.ts
-import { ExecutionContext } from '@nestjs/common';
+import { ExecutionContext, Injectable } from '@nestjs/common';
 import { I18nResolver } from 'nestjs-i18n';
 import {
   AcceptLanguageResolver,
@@ -18,6 +18,7 @@ import { DEFAULT_LANGUAGE, normalizeLanguage } from './i18n.constants';
  * (Driver.lang / Order.recipientLang) are always the same set of values, so
  * `?lang=ar-EG` and a stored `ar-EG` behave identically.
  */
+@Injectable()
 export class LanguageResolver implements I18nResolver {
   private readonly query = new QueryResolver(['lang']);
   private readonly accept = new AcceptLanguageResolver({

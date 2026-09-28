@@ -1,6 +1,5 @@
 // src/common/pipes/localized-validation.pipe.ts
 import {
-  ArgumentMetadata,
   BadRequestException,
   Injectable,
   ValidationError,
@@ -53,10 +52,15 @@ export class LocalizedValidationPipe extends ValidationPipe {
       },
     });
   }
-
-  protected toValidate(metadata: ArgumentMetadata): boolean {
-    return true;
-  }
+  // NOTE: deliberately no `toValidate` override.
+  //
+  // An earlier version returned `true` unconditionally, which made Nest
+  // validate primitive arguments too. class-validator cannot validate a bare
+  // string, so every route with `@Param('id') id: string` (30 of them) rejected
+  // the request with 400 "undefined value is invalid" — including the public,
+  // unauthenticated GET /tracking/:trackingCode. The inherited implementation
+  // skips primitives and validates only class metatypes, which is the
+  // behaviour we want. `regression.spec.ts` locks this in.
 }
 
 function resolveLang(): string {
