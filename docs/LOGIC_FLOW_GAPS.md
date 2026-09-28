@@ -143,9 +143,9 @@ The retention job removes old delivery-photo objects and clears order references
 
 ### Tenant API integration contract
 
-A Passport API-key strategy exists but route-level use is not defined. The generated tenant API secret is not part of the visible strategy validation, which currently authenticates by API key alone.
+A Passport API-key strategy exists but route-level use is not defined. The unused `Tenant.apiSecret` field and its generation/return paths were removed; the existing strategy authenticates by API key alone, but no route contract is implied by that change.
 
-**Decision required:** Choose API-key-only versus key/secret signing, list permitted endpoints, define rotation overlap/revocation behavior, and specify whether API access is read-only or may create/update orders. Then document the contract and test tenant scoping and usage accounting.
+**Decision required:** Define which endpoints, if any, should use the existing API-key strategy, then specify rotation/revocation behavior, access permissions, tenant scoping, and usage accounting before wiring it to routes.
 
 ### Tenant plans and entitlements
 

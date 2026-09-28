@@ -14,6 +14,8 @@ import { I18nHelper } from '@i18n/i18n.utils';
 import { I18nContext } from 'nestjs-i18n';
 import * as crypto from 'crypto';
 import { resolvePublicWebhookUrl } from './webhook-target.util';
+import type { Prisma, Webhook } from '@prisma/client';
+import type { WebhookPayload } from './types/webhook-job.type';
 
 export const WEBHOOK_QUEUE = 'webhooks';
 
@@ -161,8 +163,8 @@ export class WebhooksService {
       tenantId,
       url: log.webhook.url,
       secret: log.webhook.secret ?? '',
-      event: log.event as any,
-      payload: log.payload as any,
+      event: log.event as WebhookEvent,
+      payload: log.payload as unknown as WebhookPayload,
       attempt: 0,
     });
 
@@ -171,7 +173,11 @@ export class WebhooksService {
 
   // ─── Dispatch (called by other services) ──────────────
 
-  async dispatch(tenantId: string, event: WebhookEvent, orderData: any) {
+  async dispatch<T extends { id: string }>(
+    tenantId: string,
+    event: WebhookEvent,
+    orderData: T,
+  ) {
     // Find active tenant webhooks subscribed to this event.
     const webhooks = await this.db.webhook.findMany({
       where: {
@@ -183,7 +189,7 @@ export class WebhooksService {
 
     if (webhooks.length === 0) return;
 
-    const payload = {
+    const payload: WebhookPayload = {
       event,
       timestamp: new Date().toISOString(),
       data: this.sanitizeOrderData(orderData),
@@ -200,9 +206,9 @@ export class WebhooksService {
   // ─── Private ──────────────────────────────────────────
 
   private async createLogAndQueue(
-    webhook: any,
+    webhook: Webhook,
     event: WebhookEvent,
-    payload: any,
+    payload: WebhookPayload,
     tenantId: string,
   ) {
     // Create the log first.
@@ -211,7 +217,7 @@ export class WebhooksService {
         webhookId: webhook.id,
         orderId: payload.data.id,
         event,
-        payload,
+        payload: payload as Prisma.InputJsonValue,
         status: 'pending',
         attempts: 0,
       },
@@ -223,7 +229,7 @@ export class WebhooksService {
       webhookId: webhook.id,
       tenantId,
       url: webhook.url,
-      secret: webhook.secret,
+      secret: webhook.secret ?? '',
       event,
       payload,
       attempt: 0,
@@ -239,10 +245,15 @@ export class WebhooksService {
     });
   }
 
-  private sanitizeOrderData(order: any) {
-    // Remove sensitive data.
-    const { otpCode, otpExpiresAt, ...safeData } = order;
-    return safeData;
+  private sanitizeOrderData(order: {
+    id: string;
+  }): Record<string, unknown> & { id: string } {
+    const safeEntries = Object.entries(order).filter(
+      ([key]) => key !== 'otpCode' && key !== 'otpExpiresAt',
+    );
+    return JSON.parse(
+      JSON.stringify(Object.fromEntries(safeEntries)),
+    ) as Record<string, unknown> & { id: string };
   }
 
   private generateSecret(): string {

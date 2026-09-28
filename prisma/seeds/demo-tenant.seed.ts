@@ -33,7 +33,6 @@ export async function seedDemoTenant(prisma: PrismaClient) {
   }
 
   const apiKey = `sk_${crypto.randomBytes(24).toString('hex')}`;
-  const apiSecret = `secret_${crypto.randomBytes(32).toString('hex')}`;
 
   const tenant = await prisma.tenant.create({
     data: {
@@ -41,7 +40,6 @@ export async function seedDemoTenant(prisma: PrismaClient) {
       slug: 'demo-shipping',
       plan: 'PRO',
       apiKey,
-      apiSecret,
       isActive: true,
       settings: {
         defaultLang: 'ar',

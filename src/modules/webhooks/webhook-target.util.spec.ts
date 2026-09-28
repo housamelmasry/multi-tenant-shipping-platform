@@ -5,9 +5,11 @@ import {
 
 describe('webhook destination validation', () => {
   it.each([
+    'http://localhost/hook',
     'http://127.0.0.1/hook',
     'http://[::1]/hook',
     'http://10.0.0.1/hook',
+    'http://169.254.169.254/hook',
   ])('rejects private destination %s', async (url) => {
     await expect(resolvePublicWebhookUrl(url)).rejects.toThrow(
       'public IP addresses',

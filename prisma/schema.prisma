@@ -13,7 +13,6 @@ model Tenant {
   slug      String   @unique
   plan      String   @default("basic")
   apiKey    String   @unique
-  apiSecret String
   isActive  Boolean  @default(true)
   settings  Json     @default("{}")
   createdAt DateTime @default(now())

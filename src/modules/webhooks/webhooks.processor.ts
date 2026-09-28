@@ -8,7 +8,7 @@ import {
 import type { Job } from 'bull';
 import { HttpService } from '@nestjs/axios';
 import { DatabaseService } from '@database/database.service';
-import { WebhookJobData } from './types/webhook-job.type';
+import { WebhookJobData, WebhookPayload } from './types/webhook-job.type';
 import { WEBHOOK_QUEUE } from './webhooks.service';
 import * as crypto from 'crypto';
 import { firstValueFrom } from 'rxjs';
@@ -16,6 +16,18 @@ import {
   createPinnedWebhookAgents,
   resolvePublicWebhookUrl,
 } from './webhook-target.util';
+
+export function createWebhookSignature(
+  payload: WebhookPayload,
+  secret: string,
+  timestamp: string,
+): string {
+  const signedPayload = `${timestamp}.${JSON.stringify(payload)}`;
+  return `sha256=${crypto
+    .createHmac('sha256', secret)
+    .update(signedPayload)
+    .digest('hex')}`;
+}
 
 @Processor(WEBHOOK_QUEUE)
 export class WebhooksProcessor {
@@ -28,9 +40,8 @@ export class WebhooksProcessor {
   async handleSend(job: Job<WebhookJobData>) {
     const { webhookLogId, url, secret, event, payload } = job.data;
 
-    // Generate the signature for request verification.
-    const signature = this.generateSignature(payload, secret);
     const timestamp = Date.now().toString();
+    const signature = createWebhookSignature(payload, secret, timestamp);
     let agents: ReturnType<typeof createPinnedWebhookAgents> | undefined;
 
     try {
@@ -65,10 +76,18 @@ export class WebhooksProcessor {
         },
       });
     } catch (error) {
-      const responseStatus = error.response?.status;
-      const responseBody = JSON.stringify(
-        error.response?.data ?? error.message,
-      ).slice(0, 1000);
+      const response =
+        isRecord(error) && isRecord(error.response)
+          ? error.response
+          : undefined;
+      const responseStatus =
+        typeof response?.status === 'number' ? response.status : undefined;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const responseBody = JSON.stringify(response?.data ?? errorMessage).slice(
+        0,
+        1000,
+      );
       const isLastAttempt = job.attemptsMade + 1 >= (job.opts.attempts ?? 5);
 
       // Calculate when to make the next attempt.
@@ -107,18 +126,12 @@ export class WebhooksProcessor {
     console.log(`✅ Webhook sent | Job: ${job.id} | Event: ${job.data.event}`);
   }
 
-  // ─── Signature Generation ─────────────────────────────
-
-  private generateSignature(payload: any, secret: string): string {
-    const body = JSON.stringify(payload);
-    return `sha256=${crypto
-      .createHmac('sha256', secret)
-      .update(body)
-      .digest('hex')}`;
-  }
-
   // exponential backoff: 2s, 4s, 8s, 16s, 32s
   private getBackoffDelay(attempt: number): number {
     return Math.min(2000 * Math.pow(2, attempt - 1), 32000);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

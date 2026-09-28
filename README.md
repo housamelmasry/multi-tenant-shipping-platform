@@ -21,78 +21,42 @@
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
-## Description
+# Shipping Management API
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+A multi-tenant shipping backend built with NestJS, TypeScript, PostgreSQL, and Prisma. This portfolio project models order and return lifecycles, driver assignment, OTP-based proof workflows, tenant-scoped APIs, and outbound webhooks.
 
-## Project setup
+## Engineering Areas
 
-```bash
-$ yarn install
-```
+- JWT authentication, role-based access, and tenant separation.
+- Order and return state transitions, driver assignment, and status history.
+- Redis-backed queues, real-time notifications, and outbound webhook delivery.
+- Arabic and English localization, image processing/storage, and PDPL-oriented technical controls.
 
-## Compile and run the project
+## Project Docs
 
-```bash
-# development
-$ yarn run start
+- [Architecture](ARCHITECTURE.md)
+- [API endpoints](API_ENDPOINTS.md)
+- [Local setup](SETUP.md)
+- [Business-flow gaps](docs/LOGIC_FLOW_GAPS.md)
+- [Test plan](docs/TEST_PLAN.md)
 
-# watch mode
-$ yarn run start:dev
+## Local Checks
 
-# production mode
-$ yarn run start:prod
-```
-
-## Run tests
+Install dependencies and configure the environment as described in [SETUP.md](SETUP.md). Useful checks:
 
 ```bash
-# unit tests
-$ yarn run test
-
-# e2e tests
-$ yarn run test:e2e
-
-# test coverage
-$ yarn run test:cov
+npm run typecheck
+npm test -- --runInBand
+npm run build
+npm run test:e2e
 ```
 
-## Deployment
+## Known Limitations / Not Implemented
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ yarn install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **SMS and OTP:** The SMS service is a stub with no real provider wired, so OTP sending fails by design and normal customer/warehouse OTP workflows cannot complete.
+- **External side effects:** There is no transactional outbox; webhook, push, and SMS dispatch are best-effort and are not guaranteed atomic with business-state changes.
+- **PDPL scope:** The module provides PDPL-oriented technical controls, including logging and anonymization scaffolding, but does not verify identity for public consent/revoke, implement the full data-subject request lifecycle, or send real SDAIA breach notifications; this project does not claim regulatory compliance.
+- **Account lifecycle:** Authentication provides login and refresh only; password reset and user-invite flows are not implemented.
+- **Tenant API keys:** The API-key strategy exists but is not applied to routes; the current protected workflows use JWT authentication.
+- **E2E CI coverage:** Local e2e tests exist, but the CI workflow does not run or gate them.
+- **Scale validation:** The project has no load testing or query-plan-based indexing work and has not been benchmarked at scale.

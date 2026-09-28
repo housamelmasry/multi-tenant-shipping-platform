@@ -128,7 +128,6 @@ src/
 | slug      | String   | Unique — URL-friendly      |
 | plan      | String   | `"basic"` / `"pro"` / etc. |
 | apiKey    | String   | Unique — for API key auth  |
-| apiSecret | String   | Hashed                     |
 | isActive  | Boolean  |                            |
 | settings  | JSON     | Tenant-specific config     |
 | createdAt | DateTime |                            |

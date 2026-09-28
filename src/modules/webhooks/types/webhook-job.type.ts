@@ -1,5 +1,5 @@
 // src/modules/webhooks/types/webhook-job.type.ts
-import { WebhookEvent } from '../dto/create-webhook.dto';
+import type { WebhookEvent } from '../dto/create-webhook.dto';
 
 export type WebhookJobData = {
   webhookLogId: string;
@@ -21,5 +21,5 @@ export type WebhookJobData = {
 export type WebhookPayload = {
   event: WebhookEvent;
   timestamp: string;
-  data: Record<string, any>;
+  data: Record<string, unknown> & { id: string };
 };

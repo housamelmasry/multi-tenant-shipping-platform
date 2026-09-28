@@ -5,7 +5,6 @@ import {
   ConflictException,
   NotFoundException,
   UnauthorizedException,
-  BadRequestException,
 } from '@nestjs/common';
 import { DatabaseService } from '@database/database.service';
 import { REDIS_CLIENT } from '../../redis/redis.module';
@@ -35,9 +34,8 @@ export class TenantsService {
     await this.assertSlugUnique(dto.slug);
     await this.assertAdminEmailUnique(dto.adminEmail);
 
-    // 2. Generate API credentials.
+    // 2. Generate the tenant API key.
     const apiKey = this.generateApiKey();
-    const apiSecret = this.generateApiSecret();
 
     // 3. Hash the password.
     const hashedPassword = await bcrypt.hash(dto.adminPassword, 12);
@@ -51,7 +49,6 @@ export class TenantsService {
           slug: dto.slug,
           plan: dto.plan,
           apiKey,
-          apiSecret,
         },
       });
 
@@ -73,7 +70,6 @@ export class TenantsService {
       ...tenant,
       // Return the API key only once, when the tenant is created.
       apiKey,
-      apiSecret,
     };
   }
 
@@ -128,7 +124,15 @@ export class TenantsService {
   async findOne(id: string) {
     const tenant = await this.db.tenant.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+        isActive: true,
+        settings: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             orders: true,
@@ -143,9 +147,7 @@ export class TenantsService {
       throw new NotFoundException(this.i18n.t('errors.tenant.not_found'));
     }
 
-    // Never return the API secret.
-    const { apiSecret, ...safeTenant } = tenant;
-    return safeTenant;
+    return tenant;
   }
 
   async update(id: string, dto: UpdateTenantDto) {
@@ -195,15 +197,14 @@ export class TenantsService {
     }
 
     const apiKey = this.generateApiKey();
-    const apiSecret = this.generateApiSecret();
 
     await this.db.tenant.update({
       where: { id },
-      data: { apiKey, apiSecret },
+      data: { apiKey },
     });
 
-    // Return the credentials only once.
-    return { apiKey, apiSecret };
+    // Return the API key only once.
+    return { apiKey };
   }
 
   // ─── Tenant Admin ────────────────────────────────────
@@ -332,10 +333,6 @@ export class TenantsService {
 
   private generateApiKey(): string {
     return `sk_${crypto.randomBytes(24).toString('hex')}`;
-  }
-
-  private generateApiSecret(): string {
-    return `secret_${crypto.randomBytes(32).toString('hex')}`;
   }
 
   private getResetTime(): string {
