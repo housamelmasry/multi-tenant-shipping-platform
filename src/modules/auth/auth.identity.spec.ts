@@ -68,7 +68,59 @@ describe('authentication identity', () => {
         role: 'TENANT_STAFF',
         tenantId: 'tenant-1',
       }),
-    ).resolves.toMatchObject({ id: 'user-1', driverId: 'driver-1' });
+    ).resolves.toMatchObject({
+      id: 'user-1',
+      sub: 'user-1',
+      driverId: 'driver-1',
+    });
+  });
+
+  it('includes driverId and both id and sub in token payload and user details', async () => {
+    const db = {
+      user: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'user-1',
+          name: 'Driver One',
+          email: 'driver@example.com',
+          role: 'TENANT_STAFF',
+          driverId: 'driver-1',
+          tenant: { id: 't-1', name: 'Tenant 1', plan: 'standard' },
+        }),
+      },
+    };
+    const jwt = {
+      signAsync: jest.fn().mockImplementation((payload) => Promise.resolve(`jwt-${payload.tokenType}`)),
+    };
+    const service = new AuthService(
+      db as never,
+      jwt as never,
+      { t: (key: string) => key } as never,
+    );
+
+    const meResult = await service.me('user-1');
+    expect(meResult).toMatchObject({ id: 'user-1', driverId: 'driver-1' });
+    expect(db.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'user-1' },
+      select: expect.objectContaining({ driverId: true, id: true }),
+    });
+
+    const generateTokens = (service as any).generateTokens.bind(service);
+    await generateTokens({
+      id: 'user-1',
+      email: 'driver@example.com',
+      role: 'TENANT_STAFF',
+      tenantId: 't-1',
+      driverId: 'driver-1',
+    });
+
+    expect(jwt.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sub: 'user-1',
+        id: 'user-1',
+        driverId: 'driver-1',
+      }),
+      expect.anything(),
+    );
   });
 
   it('rejects an inactive linked driver even if the user account is active', async () => {

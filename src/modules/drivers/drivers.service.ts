@@ -174,6 +174,10 @@ export class DriversService {
   // ─── Location ─────────────────────────────────────────
 
   async updateLocation(driverId: string, dto: UpdateLocationDto) {
+    if (!driverId) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
+
     const driver = await this.db.driver.update({
       where: { id: driverId },
       data: {
@@ -196,6 +200,10 @@ export class DriversService {
   }
 
   async updateOnlineStatus(driverId: string, isOnline: boolean) {
+    if (!driverId) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
+
     const driver = await this.db.driver.findUnique({
       where: { id: driverId },
     });
@@ -223,6 +231,10 @@ export class DriversService {
   // ─── Driver Stats ─────────────────────────────────────
 
   async getMyStats(driverId: string) {
+    if (!driverId) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -274,6 +286,10 @@ export class DriversService {
   // ─── Private ──────────────────────────────────────────
 
   async registerDevice(driverId: string, dto: { fcmToken: string }) {
+    if (!driverId) {
+      throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
+    }
+
     return this.db.driver.update({
       where: { id: driverId },
       data: { fcmToken: dto.fcmToken, fcmTokenAt: new Date() },

@@ -47,6 +47,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       );
     }
 
-    return user; // Attach the user to request.user.
+    // Attach user to request.user, ensuring both id and sub resolve to user.id
+    return {
+      ...user,
+      sub: user.id,
+    };
   }
 }

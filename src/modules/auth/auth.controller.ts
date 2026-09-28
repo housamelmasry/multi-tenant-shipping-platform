@@ -35,7 +35,6 @@ export class AuthController {
   @Post('refresh')
   @Public()
   @ApiOperation({ summary: 'Refresh the access token' })
-  @ApiBearerAuth('JWT')
   @ApiCommonResponses()
   refresh(@Body() dto: RefreshTokenDto) {
     return this.authService.refreshToken(dto.refreshToken);

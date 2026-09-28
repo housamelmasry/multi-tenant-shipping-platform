@@ -49,6 +49,7 @@ export class AuthService {
         name: user.name,
         email: user.email,
         role: user.role,
+        driverId: user.driverId ?? null,
         tenant: user.tenant
           ? { id: user.tenant.id, name: user.tenant.name }
           : null,
@@ -89,6 +90,7 @@ export class AuthService {
         name: true,
         email: true,
         role: true,
+        driverId: true,
         tenant: {
           select: { id: true, name: true, plan: true },
         },
@@ -100,9 +102,11 @@ export class AuthService {
   private async generateTokens(user: any) {
     const payload: JwtPayload = {
       sub: user.id,
+      id: user.id,
       email: user.email,
       role: user.role,
       tenantId: user.tenantId,
+      driverId: user.driverId ?? undefined,
     };
 
     const [accessToken, refreshToken] = await Promise.all([

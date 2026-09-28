@@ -328,6 +328,8 @@ export class OrdersService {
       ...(dto.status === OrderStatus.PICKED_UP && { pickedUpAt: new Date() }),
       ...(dto.status === OrderStatus.FAILED && {
         failedReason: dto.failedReason,
+        otpCode: null,
+        otpExpiresAt: null,
       }),
     };
 
@@ -396,7 +398,11 @@ export class OrdersService {
     const updatedOrder = await this.db.$transaction(async (tx) => {
       const updated = await tx.order.update({
         where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
+        data: {
+          status: OrderStatus.CANCELLED,
+          otpCode: null,
+          otpExpiresAt: null,
+        },
       });
 
       // Release the assigned driver, if any.

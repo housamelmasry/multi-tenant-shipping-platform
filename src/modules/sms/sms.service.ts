@@ -33,6 +33,34 @@ export const orderNotificationTemplate = (
 ): SmsTemplate | undefined =>
   ORDER_NOTIFICATION_TEMPLATES[status as NotifiableOrderStatus];
 
+export function maskPhone(phone: string): string {
+  if (!phone) return '';
+  const trimmed = phone.trim();
+  if (trimmed.length <= 4) return '****';
+  if (trimmed.length <= 7) {
+    return (
+      trimmed.slice(0, 2) + '*'.repeat(trimmed.length - 3) + trimmed.slice(-1)
+    );
+  }
+  const prefixLength = trimmed.startsWith('+') ? 4 : 3;
+  const suffixLength = 2;
+  const maskCount = Math.max(trimmed.length - prefixLength - suffixLength, 3);
+  return (
+    trimmed.slice(0, prefixLength) +
+    '*'.repeat(maskCount) +
+    trimmed.slice(-suffixLength)
+  );
+}
+
+export function redactOtpMessage(message: string, code?: string): string {
+  if (!message) return '';
+  let redacted = message;
+  if (code) {
+    redacted = redacted.split(code).join('******');
+  }
+  return redacted.replace(/\b\d{4,6}\b/g, '******');
+}
+
 @Injectable()
 export class SmsService {
   private readonly logger = new Logger(SmsService.name);
@@ -75,6 +103,7 @@ export class SmsService {
       template: 'otp.delivery',
       tenantId: params.tenantId,
       orderId: params.orderId,
+      otpCode: params.code,
     });
   }
 
@@ -127,6 +156,7 @@ export class SmsService {
       template: 'otp.return',
       tenantId: params.tenantId,
       orderId: params.orderId,
+      otpCode: params.code,
     });
   }
 
@@ -142,14 +172,22 @@ export class SmsService {
     template: string;
     tenantId?: string;
     orderId?: string;
+    otpCode?: string;
   }) {
-    // Save the record to the database first.
+    // Redact OTP codes and mask phone numbers before writing to the database log.
+    const loggedPhone = maskPhone(params.phone);
+    const loggedMessage =
+      params.otpCode || params.template.startsWith('otp')
+        ? redactOtpMessage(params.message, params.otpCode)
+        : params.message;
+
+    // Save the sanitized record to the database first.
     const log = await this.db.smsLog.create({
       data: {
         tenantId: params.tenantId,
         orderId: params.orderId,
-        phone: params.phone,
-        message: params.message,
+        phone: loggedPhone,
+        message: loggedMessage,
         template: params.template,
         status: 'pending',
       },
@@ -165,7 +203,7 @@ export class SmsService {
     });
 
     this.logger.warn(
-      `SMS not sent because no provider is configured (log ${log.id})`,
+      `SMS not sent because no provider is configured (log ${log.id}, to ${loggedPhone})`,
     );
     return { sent: false, id: log.id, reason: 'provider_unavailable' };
   }
