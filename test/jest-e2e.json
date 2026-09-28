@@ -3,6 +3,15 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  // Without these the suite cannot resolve the `@database/*` / `@i18n/*`
+  // aliases used throughout src, and fails at import time before any test runs.
+  "moduleNameMapper": {
+    "^@common/(.*)$": "<rootDir>/../src/common/$1",
+    "^@config/(.*)$": "<rootDir>/../src/config/$1",
+    "^@database/(.*)$": "<rootDir>/../src/database/$1",
+    "^@i18n/(.*)$": "<rootDir>/../src/i18n/$1",
+    "^@modules/(.*)$": "<rootDir>/../src/modules/$1"
+  },
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

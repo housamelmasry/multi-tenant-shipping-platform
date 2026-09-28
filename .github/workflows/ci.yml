@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Typecheck, build, unit tests
+    runs-on: ubuntu-latest
+    env:
+      # Prisma's config loader requires DATABASE_URL to be set, but neither
+      # `validate` nor `generate` opens a connection. A placeholder lets the
+      # schema checks run without provisioning a database.
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: yarn prisma generate
+
+      - name: Validate Prisma schema
+        run: yarn prisma validate
+
+      # `nest build` excludes **/*spec.ts and ts-jest transpiles without type
+      # checking, so without this step a type error in a test file reaches main
+      # unnoticed. The update-dto/Prisma parity test depends on this holding.
+      - name: Typecheck (covers *.spec.ts)
+        run: yarn typecheck
+
+      - name: Build
+        run: yarn build
+
+      # Runs the i18n catalog parity/validity tests, the update-DTO vs Prisma
+      # column parity test, and the service specs.
+      - name: Unit tests
+        run: yarn jest --ci
+
+      # Non-blocking on purpose: the repo carries pre-existing lint debt
+      # (~190 errors) and a required gate would be red from the first commit.
+      # Tighten to `run: yarn lint:check` once the debt is cleared.
+      - name: Lint (informational)
+        continue-on-error: true
+        run: yarn eslint "{src,apps,libs,test}/**/*.ts"
+
+  migrations:
+    name: Migrations apply cleanly, no schema drift
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - '5432:5432'
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+      PGPASSWORD: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # Guards against a migration being committed but never applied, and
+      # against SQL that only happens to work on an already-populated database.
+      - name: Apply every migration to an empty database
+        run: yarn prisma migrate deploy
+
+      - name: Assert no migration is left unapplied
+        run: |
+          yarn prisma migrate status
+          # `migrate status` exits 0 even when migrations are pending, so grep
+          # its output instead of trusting the exit code.
+          if ! yarn prisma migrate status | grep -q "up to date"; then
+            echo "::error::migrations are not fully applied"
+            exit 1
+          fi
+
+      # `migrate diff` reuses the shadow database but does not create it.
+      - name: Create shadow database
+        run: psql -h localhost -U ci -d ci -c 'CREATE DATABASE ci_shadow'
+
+      # Catches a schema.prisma edit that never got a matching migration.
+      # --exit-code makes Prisma exit non-zero when the two differ.
+      - name: Assert schema matches migrations
+        run: |
+          yarn prisma migrate diff \
+            --from-migrations prisma/migrations \
+            --to-schema-datamodel prisma/schema.prisma \
+            --shadow-database-url postgresql://ci:ci@localhost:5432/ci_shadow \
+            --exit-code
