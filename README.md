@@ -16,8 +16,6 @@ Multi-tenant shipping backend built with NestJS, TypeScript, PostgreSQL, and Pri
 - [Architecture](ARCHITECTURE.md)
 - [API endpoints](API_ENDPOINTS.md)
 - [Local setup](SETUP.md)
-- [Business-flow gaps](docs/LOGIC_FLOW_GAPS.md)
-- [Test plan](docs/TEST_PLAN.md)
 - [MIT License](LICENSE)
 
 ## Local Checks
