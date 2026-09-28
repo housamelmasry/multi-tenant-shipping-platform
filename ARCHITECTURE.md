@@ -1,411 +1,465 @@
 # Shipping API — Architecture Overview
 
+This document describes the backend present in this repository. It does not describe a production deployment or claim that separately planned client applications exist.
+
 ## Stack
 
-| Layer         | Technology                          |
-| ------------- | ----------------------------------- |
-| **API**       | NestJS 11 + TypeScript              |
-| **DB**        | PostgreSQL 16 + Prisma 6 (ORM)      |
-| **Cache/Q**   | Redis 7 (Bull queues, rate-limit)   |
-| **Storage**   | AWS S3 / Cloudflare R2 / MinIO      |
-| **Push**      | Firebase Cloud Messaging (FCM)      |
-| **SMS**       | Unifonic                            |
-| **Auth**      | JWT (passport) + API Keys (tenants) |
-| **I18n**      | nestjs-i18n (Arabic default)        |
-| **Docs**      | Swagger (OpenAPI)                   |
-| **Dashboard** | React (separate project)            |
-| **Mobile**    | React Native (separate project)     |
+| Layer                   | Technology / implementation                                                        |
+| ----------------------- | ---------------------------------------------------------------------------------- |
+| API                     | NestJS 11 + TypeScript                                                             |
+| Database                | PostgreSQL through Prisma 6                                                        |
+| Queue and rate limiting | Redis, Bull, and `nestjs-throttler-storage-redis`                                  |
+| Object storage          | AWS S3, Cloudflare R2, or MinIO through the S3 client                              |
+| Push                    | Firebase Cloud Messaging through Firebase Admin                                    |
+| SMS                     | Stub only; no SMS provider is wired                                                |
+| Authentication          | JWT routes; a tenant API-key Passport strategy exists but is not applied to routes |
+| Localization            | `nestjs-i18n`, Arabic default, English catalogs                                    |
+| API documentation       | Swagger / OpenAPI                                                                  |
 
----
+## Providers and Runtime
 
-## Providers
+### Database
 
-### Database (PostgreSQL + Prisma)
+- `src/database/database.module.ts` provides the global `DatabaseService`, which extends Prisma Client.
+- `DATABASE_URL` configures the PostgreSQL connection. The Prisma datasource does not pin a PostgreSQL server version.
+- `prisma/schema.prisma` defines the data model; migrations are in `prisma/migrations/`.
 
-- **Module:** `src/database/database.module.ts` — Global module.
-- **Service:** `DatabaseService` extends `PrismaClient`, connects on module init.
-- **Config:** `DATABASE_URL` env var.
-- **Schema:** `prisma/schema.prisma` — single source of truth. Migrations in `prisma/migrations/`.
+### Redis and Bull
 
-### Redis
-
-- **Module:** `src/redis/redis.module.ts`.
-- Used for:
-  - Bull job queues (webhooks, SMS, notifications)
-  - Rate-limit storage (nestjs-throttler-storage-redis)
-  - General caching (if needed later)
+- `src/redis/redis.module.ts` creates the Redis client; Bull and throttler storage are configured in `src/app.module.ts`.
+- The Bull queue is used for outbound webhook delivery, with five attempts and exponential backoff. SMS and push sends are not dispatched through Bull in the current code.
+- No general-purpose cache service is implemented.
 
 ### Firebase Cloud Messaging
 
-- **File:** `src/config/firebase.config.ts`.
-- Initialized from env: `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`.
-- Singleton `admin.app` — gracefully skips if vars missing.
-- Exposes `getFirebaseMessaging()` for push notifications to drivers.
+- `src/config/firebase.config.ts` initializes Firebase Admin using `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, and `FIREBASE_PRIVATE_KEY`. Initialization errors are caught and logged; push delivery requires a usable Firebase app and driver token.
+- `NotificationsService` sends FCM messages inline and records notification state in the database.
 
-### S3 / Object Storage
+### Object Storage
 
-- **File:** `src/config/storage.config.ts`.
-- Supports **AWS S3**, **Cloudflare R2**, and **MinIO** via `STORAGE_PROVIDER` env var.
-- Bucket: `S3_BUCKET` env — stores delivery photos & return product photos.
+- `src/config/storage.config.ts` creates an S3-compatible client for AWS S3 (default), Cloudflare R2, or MinIO, selected by `STORAGE_PROVIDER`.
+- Bucket names are provider-specific (`S3_BUCKET`, `R2_BUCKET`, or `MINIO_BUCKET`). The storage module processes delivery and return photos; availability depends on valid provider configuration.
 
-### SMS (Unifonic)
+### SMS
 
-- **Module:** `src/modules/sms/`.
-- Provider: Unifonic (configurable via `SMS_PROVIDER`).
-- Dev mode: `SMS_LOG_ONLY=true` logs instead of sending.
+- `src/modules/sms/` builds localized messages, stores redacted/phone-masked logs, marks the send failed, and returns `provider_unavailable`.
+- There is no Unifonic adapter or other SMS provider implementation. `SMS_PROVIDER` and `SMS_API_KEY` are present in `.env.example` but are not read by the current service.
 
-### Bull Queues
+## Repository Structure
 
-- **Module:** `src/modules/notifications/` — push notifications.
-- Also used for webhook delivery (retry + backoff) and SMS dispatch.
-- Redis-backed with exponential backoff (5 attempts).
-
----
-
-## Directory Structure
-
-```
+```text
 src/
-├── app.module.ts            # Root module — imports everything
-├── main.ts                  # Bootstrap (Swagger, Firebase, CORS, etc.)
-│
-├── config/                  # NestJS ConfigService-based factories
-│   ├── app.config.ts
-│   ├── database.config.ts
-│   ├── firebase.config.ts
-│   ├── jwt.config.ts
-│   └── storage.config.ts
-│
+├── app.module.ts            # Global modules and guards
+├── main.ts                  # Bootstrap, CORS, Swagger
+├── config/                  # App, database, JWT, Firebase, storage configuration
 ├── database/                # Prisma client provider
-│   ├── database.module.ts   # @Global() — no need to re-import
-│   └── database.service.ts  # extends PrismaClient
-│
 ├── redis/                   # Redis client provider
-│   └── redis.module.ts
-│
-├── common/                  # Shared infrastructure
-│   ├── config/              # Runtime config validation
-│   ├── constants/
-│   ├── decorators/          # @CurrentUser, @Roles, etc.
-│   ├── enums/               # Shared enums
-│   ├── filters/             # Exception filters
-│   ├── guards/              # JwtAuthGuard, RolesGuard, ThrottlerGuard
-│   ├── interceptors/        # Logging, transformation
-│   ├── pipes/               # Validation pipes
-│   ├── swagger/             # Swagger decorators/helpers
-│   ├── types/               # Extended express types
-│   └── utils/               # Helpers (OTP, phone format, etc.)
-│
-├── modules/                 # Feature modules (domain-driven)
-│   ├── auth/                # Login, register, JWT issuance
-│   ├── tenants/             # Multi-tenant management
-│   ├── users/               # User CRUD (dashboard admins)
-│   ├── drivers/             # Driver CRUD + status
-│   ├── orders/              # Order lifecycle
-│   ├── tracking/            # Real-time driver location (Socket.IO)
-│   ├── returns/             # Return request workflow
-│   ├── webhooks/            # Outbound webhooks (tenant callbacks)
-│   ├── notifications/       # FCM push + Bull queue
-│   ├── sms/                 # SMS dispatch
-│   ├── storage/             # Photo upload/presigned URLs
-│   └── pdpl/                # Saudi PDPL compliance (data requests, consent, breach logs)
-│
-├── cli/                     # CLI commands (create-admin, etc.)
-│
-└── i18n/                    # Translation files (ar/en)
+├── common/                  # Guards, decorators, filters, pipes, shared types
+├── i18n/                    # Arabic and English catalogs and language resolution
+├── cli/                     # create-admin command
+└── modules/
+    ├── auth/                # Login, refresh, current-user lookup, JWT/API-key strategies
+    ├── tenants/             # Tenant management and API-key generation
+    ├── users/               # Empty controller and service placeholders
+    ├── drivers/              # Driver management and status/location operations
+    ├── orders/               # Order lifecycle, assignment, and OTP verification
+    ├── tracking/             # Socket.IO driver/order tracking
+    ├── returns/              # Return-request lifecycle and warehouse OTP verification
+    ├── webhooks/             # Webhook management and queued delivery
+    ├── notifications/        # Inline FCM sends and notification records
+    ├── sms/                  # SMS message/logging stub; no provider
+    ├── storage/              # Photo processing and S3-compatible storage
+    └── pdpl/                 # PDPL-oriented logging/anonymization scaffolding
 ```
 
----
+There is no dashboard or mobile-app source in this repository. Any React dashboard or React Native app is outside this project and is not documented here as an implemented client.
 
 ## Database Schema
 
+The following lists every scalar Prisma field (database column) for each model. Relation fields such as `tenant`, `driver`, and `statusHistory` are Prisma relations, not additional columns. Unless noted, `String` IDs use `@default(uuid())`; `?` means nullable. Status fields are `String` columns unless a Prisma enum is explicitly named below.
+
 ### `Tenant`
 
-| Column    | Type     | Notes                      |
-| --------- | -------- | -------------------------- |
-| id        | UUID     | PK                         |
-| name      | String   |                            |
-| slug      | String   | Unique — URL-friendly      |
-| plan      | String   | `"basic"` / `"pro"` / etc. |
-| apiKey    | String   | Unique — for API key auth  |
-| isActive  | Boolean  |                            |
-| settings  | JSON     | Tenant-specific config     |
-| createdAt | DateTime |                            |
-| updatedAt | DateTime |                            |
+| Column      | Prisma declaration            |
+| ----------- | ----------------------------- |
+| `id`        | `String @id @default(uuid())` |
+| `name`      | `String`                      |
+| `slug`      | `String @unique`              |
+| `plan`      | `String @default("basic")`    |
+| `apiKey`    | `String @unique`              |
+| `isActive`  | `Boolean @default(true)`      |
+| `settings`  | `Json @default("{}")`         |
+| `createdAt` | `DateTime @default(now())`    |
+| `updatedAt` | `DateTime @updatedAt`         |
 
-Relations: `users[]`, `drivers[]`, `orders[]`, `webhooks[]`, `returnRequests[]`, `notifications[]`, `smsLogs[]`, `consentLogs[]`, `dataRequests[]`, `breachLogs[]`, `dataAccessLogs[]`
+`apiSecret` is not in the current model. The API-key strategy exists, but is not applied to routes.
 
 ### `User`
 
-| Column   | Type    | Notes                                            |
-| -------- | ------- | ------------------------------------------------ |
-| id       | UUID    | PK                                               |
-| email    | String  | Unique                                           |
-| password | String  | bcryptjs                                         |
-| name     | String  |                                                  |
-| role     | String  | `"super_admin"`, `"admin"`, `"ops"`, `"support"` |
-| isActive | Boolean |                                                  |
-| lang     | String  | `"ar"` / `"en"`                                  |
-| driverId | UUID?   | Links driver account                             |
-| tenantId | UUID?   | Null for super_admin                             |
+| Column      | Prisma declaration                  |
+| ----------- | ----------------------------------- |
+| `id`        | `String @id @default(uuid())`       |
+| `email`     | `String @unique`                    |
+| `password`  | `String`                            |
+| `name`      | `String`                            |
+| `role`      | `String`                            |
+| `isActive`  | `Boolean @default(true)`            |
+| `lang`      | `String @default("ar")`             |
+| `driverId`  | `String? @unique @map("driver_id")` |
+| `tenantId`  | `String?`                           |
+| `createdAt` | `DateTime @default(now())`          |
+| `updatedAt` | `DateTime @updatedAt`               |
 
 ### `Driver`
 
-| Column         | Type      | Notes                               |
-| -------------- | --------- | ----------------------------------- |
-| id             | UUID      | PK                                  |
-| name           | String    |                                     |
-| phone          | String    | Unique                              |
-| email          | String?   |                                     |
-| nationalId     | String    |                                     |
-| vehicleType    | String    |                                     |
-| vehiclePlate   | String    |                                     |
-| status         | String    | `"ONLINE"` / `"OFFLINE"` / `"BUSY"` |
-| isActive       | Boolean   |                                     |
-| currentLat     | Float?    | Real-time tracking                  |
-| currentLng     | Float?    |                                     |
-| lastLocationAt | DateTime? |                                     |
-| fcmToken       | String?   | Push notification token             |
-| tenantId       | UUID?     |                                     |
+| Column           | Prisma declaration               |
+| ---------------- | -------------------------------- |
+| `id`             | `String @id @default(uuid())`    |
+| `name`           | `String`                         |
+| `phone`          | `String @unique`                 |
+| `email`          | `String?`                        |
+| `nationalId`     | `String`                         |
+| `vehicleType`    | `String`                         |
+| `vehiclePlate`   | `String`                         |
+| `status`         | `String @default("OFFLINE")`     |
+| `isActive`       | `Boolean @default(true)`         |
+| `currentLat`     | `Float?`                         |
+| `currentLng`     | `Float?`                         |
+| `lastLocationAt` | `DateTime?`                      |
+| `fcmToken`       | `String? @map("fcm_token")`      |
+| `fcmTokenAt`     | `DateTime? @map("fcm_token_at")` |
+| `lang`           | `String @default("ar")`          |
+| `tenantId`       | `String?`                        |
+| `createdAt`      | `DateTime @default(now())`       |
+| `updatedAt`      | `DateTime @updatedAt`            |
 
 ### `Order`
 
-| Column           | Type      | Notes                                                                        |
-| ---------------- | --------- | ---------------------------------------------------------------------------- |
-| id               | UUID      | PK                                                                           |
-| trackingCode     | String    | Unique — auto-generated                                                      |
-| externalRef      | String?   | Tenant's own ref number                                                      |
-| status           | String    | `PENDING` → `ASSIGNED` → `PICKED_UP` → `IN_TRANSIT` → `DELIVERED` / `FAILED` |
-| senderName       | String    |                                                                              |
-| senderPhone      | String    |                                                                              |
-| senderAddress    | String    |                                                                              |
-| senderLat/Lng    | Float?    |                                                                              |
-| recipientName    | String    |                                                                              |
-| recipientPhone   | String    |                                                                              |
-| recipientAddress | String    |                                                                              |
-| recipientLat/Lng | Float?    |                                                                              |
-| description      | String?   |                                                                              |
-| weight           | Float?    |                                                                              |
-| codAmount        | Float     | Cash on delivery                                                             |
-| notes            | String?   |                                                                              |
-| otpCode          | String?   | Delivery OTP                                                                 |
-| otpExpiresAt     | DateTime? |                                                                              |
-| otpVerifiedAt    | DateTime? |                                                                              |
-| deliveryPhoto    | String?   | Signed URL                                                                   |
-| deliveryPhotoKey | String?   | S3 object key                                                                |
-| deliveredAt      | DateTime? |                                                                              |
-| pickedUpAt       | DateTime? |                                                                              |
-| failedReason     | String?   |                                                                              |
-| driverId         | UUID?     |                                                                              |
-| tenantId         | UUID?     |                                                                              |
-
-Relations: `statusHistory[]`, `webhookLogs[]`, `returnRequests[]`
+| Column             | Prisma declaration                             |
+| ------------------ | ---------------------------------------------- |
+| `id`               | `String @id @default(uuid())`                  |
+| `trackingCode`     | `String @unique`                               |
+| `externalRef`      | `String?`                                      |
+| `status`           | `String @default("PENDING")`                   |
+| `senderName`       | `String`                                       |
+| `senderPhone`      | `String`                                       |
+| `senderAddress`    | `String`                                       |
+| `senderLat`        | `Float?`                                       |
+| `senderLng`        | `Float?`                                       |
+| `recipientName`    | `String`                                       |
+| `recipientPhone`   | `String`                                       |
+| `recipientAddress` | `String`                                       |
+| `recipientLat`     | `Float?`                                       |
+| `recipientLng`     | `Float?`                                       |
+| `recipientLang`    | `String @default("ar") @map("recipient_lang")` |
+| `description`      | `String?`                                      |
+| `weight`           | `Float?`                                       |
+| `codAmount`        | `Float @default(0)`                            |
+| `notes`            | `String?`                                      |
+| `otpCode`          | `String?`                                      |
+| `otpExpiresAt`     | `DateTime?`                                    |
+| `otpVerifiedAt`    | `DateTime?`                                    |
+| `deliveryPhoto`    | `String?`                                      |
+| `deliveryPhotoKey` | `String?`                                      |
+| `deliveredAt`      | `DateTime?`                                    |
+| `pickedUpAt`       | `DateTime?`                                    |
+| `failedReason`     | `String?`                                      |
+| `driverId`         | `String?`                                      |
+| `tenantId`         | `String?`                                      |
+| `createdAt`        | `DateTime @default(now())`                     |
+| `updatedAt`        | `DateTime @updatedAt`                          |
 
 ### `OrderStatusHistory`
 
-Tracks every status transition — immutable audit log.
-
-| Column        | Type    |
-| ------------- | ------- |
-| id            | UUID    |
-| orderId       | UUID    |
-| fromStatus    | String? |
-| toStatus      | String  |
-| changedByType | String  | `"system"`, `"driver"`, `"admin"`, `"tenant"` |
-| changedById   | String? |
-| note          | String? |
+| Column          | Prisma declaration            |
+| --------------- | ----------------------------- |
+| `id`            | `String @id @default(uuid())` |
+| `orderId`       | `String`                      |
+| `fromStatus`    | `String?`                     |
+| `toStatus`      | `String`                      |
+| `changedByType` | `String`                      |
+| `changedById`   | `String?`                     |
+| `note`          | `String?`                     |
+| `createdAt`     | `DateTime @default(now())`    |
 
 ### `Webhook`
 
-| Column   | Type     |
-| -------- | -------- |
-| id       | UUID     |
-| url      | String   |
-| events   | String[] | e.g. `["order.delivered", "order.failed"]` |
-| secret   | String?  | HMAC signing                               |
-| isActive | Boolean  |
-| tenantId | UUID?    |
+| Column      | Prisma declaration            |
+| ----------- | ----------------------------- |
+| `id`        | `String @id @default(uuid())` |
+| `url`       | `String`                      |
+| `events`    | `String[]`                    |
+| `secret`    | `String?`                     |
+| `isActive`  | `Boolean @default(true)`      |
+| `tenantId`  | `String?`                     |
+| `createdAt` | `DateTime @default(now())`    |
+| `updatedAt` | `DateTime @updatedAt`         |
 
 ### `WebhookLog`
 
-| Column         | Type      |
-| -------------- | --------- |
-| id             | UUID      |
-| webhookId      | UUID      |
-| orderId        | UUID?     |
-| event          | String    |
-| payload        | JSON      |
-| status         | String    | `"pending"`, `"delivered"`, `"failed"` |
-| attempts       | Int       |
-| responseStatus | Int?      |
-| responseBody   | String?   |
-| nextRetryAt    | DateTime? |
+| Column           | Prisma declaration            |
+| ---------------- | ----------------------------- |
+| `id`             | `String @id @default(uuid())` |
+| `webhookId`      | `String`                      |
+| `orderId`        | `String?`                     |
+| `event`          | `String`                      |
+| `payload`        | `Json`                        |
+| `status`         | `String @default("pending")`  |
+| `attempts`       | `Int @default(0)`             |
+| `responseStatus` | `Int?`                        |
+| `responseBody`   | `String?`                     |
+| `nextRetryAt`    | `DateTime?`                   |
+| `createdAt`      | `DateTime @default(now())`    |
 
 ### `ReturnRequest`
 
-| Column           | Type      |
-| ---------------- | --------- |
-| id               | UUID      |
-| orderId          | UUID      | Unique — one return per order                                            |
-| tenantId         | UUID      |
-| driverId         | UUID?     |
-| reason           | String    |
-| notes            | String?   |
-| requestedBy      | String    |
-| warehouseName    | String    |
-| warehousePhone   | String    |
-| warehouseAddress | String    |
-| warehouseLat     | Decimal?  |
-| warehouseLng     | Decimal?  |
-| status           | String    | `"pending"` → `"approved"` → `"picked_up"` → `"returned"` / `"rejected"` |
-| productPhoto     | String?   |
-| productPhotoKey  | String?   |
-| otpCode          | String?   |
-| otpExpiresAt     | DateTime? |
-| otpVerifiedAt    | DateTime? |
-| returnedAt       | DateTime? |
+| Column                | Prisma declaration                                  |
+| --------------------- | --------------------------------------------------- |
+| `id`                  | `String @id @default(uuid())`                       |
+| `orderId`             | `String @map("order_id")`; indexed, not unique      |
+| `tenantId`            | `String @map("tenant_id")`                          |
+| `driverId`            | `String? @map("driver_id")`                         |
+| `reason`              | `String`                                            |
+| `notes`               | `String?`                                           |
+| `requestedBy`         | `String @map("requested_by")`                       |
+| `warehouseName`       | `String @map("warehouse_name")`                     |
+| `warehousePhone`      | `String @map("warehouse_phone")`                    |
+| `warehouseAddress`    | `String @map("warehouse_address")`                  |
+| `warehouseLat`        | `Decimal? @db.Decimal(10, 8) @map("warehouse_lat")` |
+| `warehouseLng`        | `Decimal? @db.Decimal(11, 8) @map("warehouse_lng")` |
+| `warehouseLang`       | `String @default("ar") @map("warehouse_lang")`      |
+| `status`              | `String @default("pending")`                        |
+| `originalOrderStatus` | `String? @map("original_order_status")`             |
+| `productPhoto`        | `String? @map("product_photo")`                     |
+| `productPhotoKey`     | `String? @map("product_photo_key")`                 |
+| `otpCode`             | `String? @map("otp_code")`                          |
+| `otpExpiresAt`        | `DateTime? @map("otp_expires_at")`                  |
+| `otpVerifiedAt`       | `DateTime? @map("otp_verified_at")`                 |
+| `returnedAt`          | `DateTime? @map("returned_at")`                     |
+| `createdAt`           | `DateTime @default(now()) @map("created_at")`       |
+| `updatedAt`           | `DateTime @updatedAt @map("updated_at")`            |
 
 ### `ReturnStatusHistory`
 
-Same pattern as `OrderStatusHistory` — documents every step of the return.
+| Column            | Prisma declaration                            |
+| ----------------- | --------------------------------------------- |
+| `id`              | `String @id @default(uuid())`                 |
+| `returnRequestId` | `String @map("return_request_id")`            |
+| `fromStatus`      | `String? @map("from_status")`                 |
+| `toStatus`        | `String`                                      |
+| `note`            | `String?`                                     |
+| `changedByType`   | `String @map("changed_by_type")`              |
+| `changedById`     | `String? @map("changed_by_id")`               |
+| `createdAt`       | `DateTime @default(now()) @map("created_at")` |
 
 ### `SmsLog`
 
-| Column         | Type      |
-| -------------- | --------- |
-| id             | UUID      |
-| tenantId       | UUID?     |
-| orderId        | UUID?     |
-| phone          | String    |
-| message        | Text      |
-| template       | String    |
-| status         | String    |
-| externalId     | String?   |
-| responseStatus | Int?      |
-| responseBody   | Text?     |
-| cost           | Decimal?  |
-| sentAt         | DateTime? |
+| Column           | Prisma declaration                            |
+| ---------------- | --------------------------------------------- |
+| `id`             | `String @id @default(uuid())`                 |
+| `tenantId`       | `String? @map("tenant_id")`                   |
+| `orderId`        | `String? @map("order_id")`                    |
+| `phone`          | `String`                                      |
+| `message`        | `String @db.Text`                             |
+| `template`       | `String`                                      |
+| `status`         | `String @default("pending")`                  |
+| `externalId`     | `String? @map("external_id")`                 |
+| `responseStatus` | `Int? @map("response_status")`                |
+| `responseBody`   | `String? @db.Text @map("response_body")`      |
+| `cost`           | `Decimal? @db.Decimal(8, 4)`                  |
+| `sentAt`         | `DateTime? @map("sent_at")`                   |
+| `createdAt`      | `DateTime @default(now()) @map("created_at")` |
+
+The current SMS stub writes `pending` then `failed`; the stats endpoint also queries historical `sent` rows.
 
 ### `Notification`
 
-| Column   | Type      |
-| -------- | --------- |
-| id       | UUID      |
-| tenantId | UUID      |
-| driverId | UUID      |
-| type     | String    | `"order_assigned"`, `"delivery_otp"`, `"payment"`, etc. |
-| title    | String    |
-| body     | String    |
-| data     | JSON?     |
-| status   | String    | `"PENDING"` → `"SENT"` → `"READ"`                       |
-| sentAt   | DateTime? |
-| readAt   | DateTime? |
+| Column      | Prisma declaration                            |
+| ----------- | --------------------------------------------- |
+| `id`        | `String @id @default(uuid())`                 |
+| `tenantId`  | `String @map("tenant_id")`                    |
+| `driverId`  | `String @map("driver_id")`                    |
+| `type`      | `String`                                      |
+| `title`     | `String`                                      |
+| `body`      | `String`                                      |
+| `data`      | `Json?`                                       |
+| `status`    | `String @default("PENDING")`                  |
+| `sentAt`    | `DateTime? @map("sent_at")`                   |
+| `readAt`    | `DateTime? @map("read_at")`                   |
+| `createdAt` | `DateTime @default(now()) @map("created_at")` |
 
-### PDPL (Saudi Personal Data Protection Law)
+### `ConsentLog`
 
-| Table           | Purpose                                                                          |
-| --------------- | -------------------------------------------------------------------------------- |
-| `ConsentLog`    | Records explicit consent from data subjects                                      |
-| `DataRequest`   | Subject rights requests (access, rectification, erasure, portability, objection) |
-| `BreachLog`     | Security breach documentation (mandatory under PDPL Art. 22)                     |
-| `DataAccessLog` | Audit trail of who accessed what and when                                        |
+| Column        | Prisma declaration                              |
+| ------------- | ----------------------------------------------- |
+| `id`          | `String @id @default(uuid())`                   |
+| `tenantId`    | `String @map("tenant_id")`                      |
+| `entityType`  | `String @map("entity_type")`                    |
+| `entityId`    | `String? @map("entity_id")`                     |
+| `phone`       | `String`                                        |
+| `purpose`     | `String`                                        |
+| `version`     | `String @default("1.0")`                        |
+| `ipAddress`   | `String? @map("ip_address")`                    |
+| `consentedAt` | `DateTime @default(now()) @map("consented_at")` |
+| `revokedAt`   | `DateTime? @map("revoked_at")`                  |
+| `isActive`    | `Boolean @default(true) @map("is_active")`      |
 
----
+### `DataRequest`
 
-## Frontend Architecture
+| Column          | Prisma declaration                            |
+| --------------- | --------------------------------------------- |
+| `id`            | `String @id @default(uuid())`                 |
+| `tenantId`      | `String @map("tenant_id")`                    |
+| `type`          | `DataRequestType`                             |
+| `status`        | `DataRequestStatus @default(PENDING)`         |
+| `requesterType` | `String @map("requester_type")`               |
+| `phone`         | `String?`                                     |
+| `driverId`      | `String? @map("driver_id")`                   |
+| `reason`        | `String?`                                     |
+| `notes`         | `String?`                                     |
+| `handledBy`     | `String? @map("handled_by")`                  |
+| `handledAt`     | `DateTime? @map("handled_at")`                |
+| `dueAt`         | `DateTime @map("due_at")`                     |
+| `reportUrl`     | `String? @map("report_url")`                  |
+| `createdAt`     | `DateTime @default(now()) @map("created_at")` |
+| `updatedAt`     | `DateTime @updatedAt @map("updated_at")`      |
 
-### Dashboard (React)
+### `BreachLog`
 
-Separate project consuming the REST API via `axios`/`react-query`.
+| Column             | Prisma declaration                            |
+| ------------------ | --------------------------------------------- |
+| `id`               | `String @id @default(uuid())`                 |
+| `tenantId`         | `String? @map("tenant_id")`                   |
+| `severity`         | `String`                                      |
+| `description`      | `String @db.Text`                             |
+| `affectedEntities` | `Int @default(0) @map("affected_entities")`   |
+| `dataTypes`        | `Json`                                        |
+| `detectedAt`       | `DateTime @map("detected_at")`                |
+| `reportedAt`       | `DateTime? @map("reported_at")`               |
+| `resolvedAt`       | `DateTime? @map("resolved_at")`               |
+| `actions`          | `Json?`                                       |
+| `createdAt`        | `DateTime @default(now()) @map("created_at")` |
 
-**Auth flow:** JWT login → token stored in httpOnly cookie or `Authorization` header.
+### `DataAccessLog`
 
-**Key pages:**
+| Column       | Prisma declaration                            |
+| ------------ | --------------------------------------------- |
+| `id`         | `String @id @default(uuid())`                 |
+| `tenantId`   | `String? @map("tenant_id")`                   |
+| `userId`     | `String @map("user_id")`                      |
+| `action`     | `String`                                      |
+| `dataType`   | `String @map("data_type")`                    |
+| `entityType` | `String @map("entity_type")`                  |
+| `entityId`   | `String @map("entity_id")`                    |
+| `ipAddress`  | `String? @map("ip_address")`                  |
+| `userAgent`  | `String? @map("user_agent")`                  |
+| `createdAt`  | `DateTime @default(now()) @map("created_at")` |
 
-- Login
-- Dashboard / KPIs
-- Orders (list, detail, assign driver)
-- Drivers (list, map view)
-- Tenants (multi-tenant management)
-- Returns (approve/reject workflow)
-- Webhooks (configuration + logs)
-- PDPL (data requests, consent audit)
-- Settings (profile, language toggle)
+The code-defined `OrderStatus`, `DriverStatus`, `ReturnStatus`, notification status/type values, webhook/SMS log states, and Prisma `DataRequestType`/`DataRequestStatus` are listed in [Statuses and Flows](#statuses-and-flows). The database columns remain strings except for the two `DataRequest` Prisma enum fields.
 
-### Mobile App (React Native)
+## Statuses and Flows
 
-Separate project — two entry points:
+### Order status
 
-1. **Driver App** — receives push (FCM), sees assigned orders, navigates with GPS, takes delivery photos, scans OTP.
-2. **Customer App** (optional) — tracks order status, receives SMS OTP.
+`OrderStatus` values are `PENDING`, `ASSIGNED`, `PICKED_UP`, `IN_TRANSIT`, `DELIVERED`, `FAILED`, `RETURNED`, and `CANCELLED`.
 
-**Auth flow:** Phone OTP or driver credentials.
+The `OrderStatusMeta.allowedTransitions` map is:
 
-**Real-time:** Socket.IO for location updates during delivery.
-
----
-
-## Key Flows
-
-### Order Lifecycle
-
+```text
+PENDING     -> ASSIGNED, CANCELLED
+ASSIGNED    -> PICKED_UP, CANCELLED
+PICKED_UP   -> IN_TRANSIT
+IN_TRANSIT  -> DELIVERED, FAILED
+DELIVERED   -> (no transitions)
+FAILED      -> (no transitions)
+RETURNED    -> (no transitions)
+CANCELLED   -> (no transitions)
 ```
-PENDING → ASSIGNED → PICKED_UP → IN_TRANSIT → DELIVERED
-                                    \           /
-                                     → FAILED ←
+
+Delivery completion uses OTP verification. Return creation is a separate operation: it accepts source orders in `DELIVERED`, `FAILED`, or `IN_TRANSIT`, stores their prior status, and directly changes the order to `RETURNED`; this is not an `OrderStatusMeta` transition.
+
+### Return status
+
+`ReturnStatus` values are `pending`, `assigned`, `picked_up`, `in_transit`, `returned`, and `cancelled`.
+
+```text
+pending     -> assigned, cancelled
+assigned    -> picked_up, cancelled
+picked_up   -> in_transit
+in_transit  -> returned (warehouse OTP verification only)
+returned    -> (no transitions)
+cancelled   -> (no transitions)
 ```
 
-1. Tenant creates order via API (web or REST).
-2. Order gets `PENDING` status.
-3. Admin assigns driver → status `ASSIGNED`.
-4. Driver confirms pickup → `PICKED_UP`, delivery photo captured.
-5. Driver navigates to recipient → status updates via Socket.IO.
-6. Driver arrives → recipient provides OTP → `DELIVERED`.
-7. On each transition: webhook fired, SMS sent, FCM pushed.
+The generic driver status endpoint rejects `returned`; warehouse OTP verification performs the final transition. Return cancellation is allowed only while `pending` or `assigned` and restores the source order's saved status.
 
-### Return Flow
+### Other status and type values
 
-```
-pending → approved → picked_up → returned
-    \                            /
-     → rejected ←---------------
-```
+- **Driver status:** `AVAILABLE`, `BUSY`, `OFFLINE` (`DriverStatus` in `src/common/enums/driver-status.enum.ts`).
+- **Webhook log status:** `pending`, `success`, `failed` (string values written/read by the webhook service and processor).
+- **SMS log status:** `pending` and `failed` are written by the current stub. The stats endpoint also queries `sent` for records from a provider implementation that is not present.
+- **Notification status:** `PENDING`, `FAILED`, `SENT`, `READ` (stored string values in `NotificationsService`).
+- **Notification type:** `new_order`, `new_return`, `order_cancelled`, `reminder`, `announcement` (`NotificationType`).
+- **Data request type:** `ACCESS`, `RECTIFICATION`, `ERASURE`, `PORTABILITY`, `OBJECTION` (`DataRequestType`).
+- **Data request status:** `PENDING`, `IN_PROGRESS`, `COMPLETED`, `REJECTED` (`DataRequestStatus`).
 
-1. Customer requests return (via admin or tenant dashboard).
-2. Admin approves → driver assigned to pick up.
-3. Driver picks up product, scans OTP → `returned`.
+## Backend Flows
+
+### Order lifecycle
+
+The status map above is the source for the regular order lifecycle. Assignment moves a pending order to assigned; driver updates move it through pickup and transit; OTP verification completes delivery. Cancellation is available from pending/assigned, failure from in-transit, and return creation can set eligible source orders to returned.
+
+Webhooks, push notifications, and SMS are not guaranteed atomic with a business-state update. SMS currently fails by design because it is a stub; push and webhook dispatch use their own current service paths.
+
+### Return lifecycle
+
+The return begins when a returnable source order is changed to `RETURNED` and a new request is created as `pending`. Assignment and driver progress follow the exact `ReturnStatus` transition map above. Warehouse OTP verification completes a return as `returned`; cancelling a pending/assigned request restores the original order status.
 
 ### Authentication
 
-- **Dashboard admins:** JWT (passport-jwt strategy).
-- **Tenants (API consumers):** API Key + Secret (passport-headerapikey).
-- **Drivers:** JWT (same strategy, restricted role).
+- **User and driver endpoints:** JWT authentication through Passport JWT, with role checks on protected routes.
+- **Tenant API key:** A Passport strategy using `passport-headerapikey` and `X-API-Key` exists, but is not wired to any route. There is no tenant API secret. Protected endpoints use JWT only; see [Known Limitations](README.md#known-limitations--not-implemented).
 
----
+## Frontend Clients
+
+No dashboard or mobile-client project is included in this repository. A React dashboard or React Native driver/customer app may be a consumer concept, but this document makes no claim that either client exists or works.
 
 ## Environment Variables
 
-| Variable                     | Description                                            |
-| ---------------------------- | ------------------------------------------------------ |
-| `PORT`                       | API server port                                        |
-| `NODE_ENV`                   | `development` / `production`                           |
-| `DATABASE_URL`               | PostgreSQL connection string                           |
-| `JWT_SECRET`                 | JWT signing secret                                     |
-| `JWT_EXPIRES_IN`             | Token expiry (e.g. `7d`)                               |
-| `REDIS_HOST`                 | Redis host                                             |
-| `REDIS_PORT`                 | Redis port                                             |
-| `S3_BUCKET`                  | Storage bucket name                                    |
-| `S3_REGION`                  | AWS region                                             |
-| `S3_ACCESS_KEY`              | AWS / R2 / MinIO access key                            |
-| `S3_SECRET_KEY`              | AWS / R2 / MinIO secret key                            |
-| `STORAGE_PROVIDER`           | `s3` / `r2` / `minio`                                  |
-| `FIREBASE_PROJECT_ID`        | Firebase project ID                                    |
-| `FIREBASE_CLIENT_EMAIL`      | Firebase service account email                         |
-| `FIREBASE_PRIVATE_KEY`       | Firebase private key                                   |
-| `SMS_PROVIDER`               | `unifonic`                                             |
-| `SMS_API_KEY`                | SMS provider API key                                   |
-| `SMS_LOG_ONLY`               | `true` to log without sending                          |
-| `SUPER_ADMIN_EMAIL`          | Required initial super-admin email                     |
-| `SUPER_ADMIN_PASSWORD`       | Required initial super-admin password                  |
-| `DEMO_TENANT_ADMIN_PASSWORD` | Required demo tenant-admin password (development seed) |
-| `DEMO_DRIVER_PASSWORD`       | Required demo driver password (development seed)       |
+The following variables are read by the current application, config, or seed code. Variables shown in `.env.example` but not read by the code are listed separately below.
+
+| Variable                     | Usage                                                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `PORT`                       | HTTP server listen port                                                                              |
+| `NODE_ENV`                   | Runtime mode and non-production Swagger exposure                                                     |
+| `ALLOWED_ORIGINS`            | Comma-separated CORS origins                                                                         |
+| `PUBLIC_URL`                 | Base URL for customer tracking links                                                                 |
+| `DATABASE_URL`               | Prisma PostgreSQL connection                                                                         |
+| `JWT_SECRET`                 | JWT signing and verification                                                                         |
+| `JWT_EXPIRES_IN`             | Configured JWT expiry value; auth token issuance currently sets explicit 15-minute/7-day expirations |
+| `REDIS_HOST`                 | Redis and Bull connection host                                                                       |
+| `REDIS_PORT`                 | Redis and Bull connection port                                                                       |
+| `STORAGE_PROVIDER`           | Selects `s3`, `r2`, or `minio`                                                                       |
+| `S3_BUCKET`                  | AWS S3 bucket name                                                                                   |
+| `S3_REGION`                  | AWS S3 region                                                                                        |
+| `S3_ACCESS_KEY`              | AWS S3 access key                                                                                    |
+| `S3_SECRET_KEY`              | AWS S3 secret key                                                                                    |
+| `R2_ACCOUNT_ID`              | Cloudflare R2 endpoint account ID                                                                    |
+| `R2_ACCESS_KEY`              | Cloudflare R2 access key                                                                             |
+| `R2_SECRET_KEY`              | Cloudflare R2 secret key                                                                             |
+| `R2_BUCKET`                  | Cloudflare R2 bucket name                                                                            |
+| `R2_PUBLIC_URL`              | Optional public base URL for R2 objects                                                              |
+| `MINIO_ENDPOINT`             | MinIO endpoint                                                                                       |
+| `MINIO_ACCESS_KEY`           | MinIO access key                                                                                     |
+| `MINIO_SECRET_KEY`           | MinIO secret key                                                                                     |
+| `MINIO_BUCKET`               | MinIO bucket name                                                                                    |
+| `FIREBASE_PROJECT_ID`        | Firebase Admin project ID                                                                            |
+| `FIREBASE_CLIENT_EMAIL`      | Firebase service-account email                                                                       |
+| `FIREBASE_PRIVATE_KEY`       | Firebase service-account private key                                                                 |
+| `SUPER_ADMIN_EMAIL`          | Required super-admin seed email                                                                      |
+| `SUPER_ADMIN_PASSWORD`       | Required super-admin seed password                                                                   |
+| `SUPER_ADMIN_NAME`           | Optional super-admin seed name                                                                       |
+| `DEMO_TENANT_ADMIN_PASSWORD` | Required demo tenant-admin seed password                                                             |
+| `DEMO_DRIVER_PASSWORD`       | Required demo driver seed password                                                                   |
+
+`SMS_PROVIDER` and `SMS_API_KEY` appear in `.env.example` but are not currently read; setting them does not enable SMS delivery. `SMS_LOG_ONLY` is neither read by the application nor present in the current `.env.example`. `JWT_EXPIRES_IN` is read by `src/config/jwt.config.ts`, but that config factory is not loaded by `ConfigModule`; current token issuance uses explicit expirations in `AuthService`.
