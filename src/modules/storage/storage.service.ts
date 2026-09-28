@@ -261,13 +261,15 @@ export class StorageService implements OnModuleInit {
     tenantId: string,
     format: string,
   ): string {
+    const safeTenant =
+      tenantId && tenantId !== 'undefined' ? tenantId : 'default';
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const random = crypto.randomBytes(16).toString('hex');
 
     // Example: delivery-photos/tenant-uuid/2024/01/a3f92b1c...jpeg
-    return `${folder}/${tenantId}/${year}/${month}/${random}.${format}`;
+    return `${folder}/${safeTenant}/${year}/${month}/${random}.${format}`;
   }
 
   private formatSize(bytes: number): string {

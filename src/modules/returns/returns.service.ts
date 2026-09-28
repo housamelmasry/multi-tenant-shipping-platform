@@ -252,30 +252,58 @@ export class ReturnsService {
       throw new NotFoundException(this.i18n.t('errors.driver.not_found'));
     }
 
-    if (driver.status === DriverStatus.BUSY) {
+    if (driver.status !== DriverStatus.AVAILABLE) {
       throw new BadRequestException(this.i18n.t('errors.driver.busy'));
     }
 
-    const [updatedReturn] = await this.db.$transaction([
-      this.db.returnRequest.update({
-        where: { id: returnId },
-        data: { driverId: dto.driverId, status: ReturnStatus.ASSIGNED },
-      }),
-      this.db.driver.update({
-        where: { id: dto.driverId },
+    const updatedReturn = await this.db.$transaction(async (tx) => {
+      const claimedDriver = await tx.driver.updateMany({
+        where: {
+          id: dto.driverId,
+          tenantId,
+          isActive: true,
+          status: DriverStatus.AVAILABLE,
+        },
         data: { status: DriverStatus.BUSY },
-      }),
-    ]);
+      });
 
-    await this.logStatusChange({
-      returnRequestId: returnId,
-      fromStatus: ReturnStatus.PENDING,
-      toStatus: ReturnStatus.ASSIGNED,
-      changedByType: 'user',
-      changedById: userId,
-      note: this.i18n.t('errors.return.history_driver_assigned', {
-        args: { name: driver.name },
-      }),
+      if (claimedDriver.count !== 1) {
+        throw new BadRequestException(this.i18n.t('errors.driver.busy'));
+      }
+
+      const claimedReturn = await tx.returnRequest.updateMany({
+        where: {
+          id: returnId,
+          tenantId,
+          status: ReturnStatus.PENDING,
+          driverId: null,
+        },
+        data: {
+          driverId: dto.driverId,
+          status: ReturnStatus.ASSIGNED,
+        },
+      });
+
+      if (claimedReturn.count !== 1) {
+        throw new BadRequestException(
+          this.i18n.t('errors.return.cannot_assign_in_current_status'),
+        );
+      }
+
+      await tx.returnStatusHistory.create({
+        data: {
+          returnRequestId: returnId,
+          fromStatus: ReturnStatus.PENDING,
+          toStatus: ReturnStatus.ASSIGNED,
+          changedByType: 'user',
+          changedById: userId,
+          note: this.i18n.t('errors.return.history_driver_assigned', {
+            args: { name: driver.name },
+          }),
+        },
+      });
+
+      return tx.returnRequest.findUniqueOrThrow({ where: { id: returnId } });
     });
 
     await this.notificationsService.notifyNewReturn(dto.driverId, tenantId, {
@@ -559,12 +587,25 @@ export class ReturnsService {
       }
 
       // Restore the original order to its previous status.
+      const restoredStatus =
+        (returnRequest.originalOrderStatus as OrderStatus | null) ??
+        OrderStatus.DELIVERED;
+
       await tx.order.update({
         where: { id: returnRequest.orderId },
         data: {
-          status:
-            (returnRequest.originalOrderStatus as OrderStatus | null) ??
-            OrderStatus.FAILED,
+          status: restoredStatus,
+        },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: returnRequest.orderId,
+          fromStatus: OrderStatus.RETURNED,
+          toStatus: restoredStatus,
+          changedByType: 'user',
+          changedById: userId,
+          note: this.i18n.t('errors.return.cancelled'),
         },
       });
 
