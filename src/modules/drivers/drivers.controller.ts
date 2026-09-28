@@ -23,7 +23,7 @@ import {
   ApiCommonResponses,
 } from '@common/swagger/api-responses.decorator';
 
-@ApiTags('السائقون')
+@ApiTags('Drivers')
 @ApiBearerAuth('JWT')
 @Controller('drivers')
 export class DriversController {
@@ -32,8 +32,8 @@ export class DriversController {
   @Post()
   @Roles(UserRole.TENANT_ADMIN)
   @ApiOperation({
-    summary: 'إضافة سائق جديد',
-    description: 'إنشاء حساب سائق مع user account تلقائياً',
+    summary: 'Add a new driver',
+    description: 'Create a driver account with an automatic user account',
   })
   @ApiCommonResponses()
   create(
@@ -45,7 +45,7 @@ export class DriversController {
 
   @Get()
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'قائمة السائقين' })
+  @ApiOperation({ summary: 'List drivers' })
   @ApiCommonResponses()
   findAll(
     @GetCurrentUser('tenantId') tenantId: string,
@@ -56,7 +56,7 @@ export class DriversController {
 
   @Get(':id')
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'تفاصيل سائق' })
+  @ApiOperation({ summary: 'Driver details' })
   @ApiCommonResponses()
   findOne(
     @Param('id') id: string,
@@ -67,7 +67,7 @@ export class DriversController {
 
   @Patch(':id')
   @Roles(UserRole.TENANT_ADMIN)
-  @ApiOperation({ summary: 'تحديث بيانات سائق' })
+  @ApiOperation({ summary: 'Update driver details' })
   @ApiCommonResponses()
   update(
     @Param('id') id: string,
@@ -79,7 +79,7 @@ export class DriversController {
 
   @Patch(':id/toggle-status')
   @Roles(UserRole.TENANT_ADMIN)
-  @ApiOperation({ summary: 'تفعيل/تعطيل سائق' })
+  @ApiOperation({ summary: 'Enable/disable a driver' })
   @ApiCommonResponses()
   toggleStatus(
     @Param('id') id: string,
@@ -92,8 +92,8 @@ export class DriversController {
   @Roles(UserRole.TENANT_STAFF)
   @LocationUpdateThrottle()
   @ApiOperation({
-    summary: 'تحديث موقع السائق',
-    description: 'يُستدعى كل 10 ثوانٍ من تطبيق السائق',
+    summary: 'Update driver location',
+    description: 'Called every 10 seconds from the driver app',
   })
   @ApiBody({
     schema: {
@@ -113,7 +113,7 @@ export class DriversController {
 
   @Patch('me/online')
   @Roles(UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'تغيير الحالة إلى متاح' })
+  @ApiOperation({ summary: 'Set status to available' })
   @ApiCommonResponses()
   goOnline(@GetCurrentUser('driverId') driverId: string) {
     return this.driversService.updateOnlineStatus(driverId, true);
@@ -121,7 +121,7 @@ export class DriversController {
 
   @Patch('me/offline')
   @Roles(UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'تغيير الحالة إلى غير متاح' })
+  @ApiOperation({ summary: 'Set status to unavailable' })
   @ApiCommonResponses()
   goOffline(@GetCurrentUser('driverId') driverId: string) {
     return this.driversService.updateOnlineStatus(driverId, false);
@@ -130,8 +130,8 @@ export class DriversController {
   @Get('me/stats')
   @Roles(UserRole.TENANT_STAFF)
   @ApiOperation({
-    summary: 'إحصائيات السائق',
-    description: 'عدد التوصيلات اليوم والإجمالي ومعدل النجاح',
+    summary: 'Driver statistics',
+    description: 'Deliveries today, total deliveries, and success rate',
   })
   @ApiCommonResponses()
   getMyStats(@GetCurrentUser('driverId') driverId: string) {
@@ -140,7 +140,7 @@ export class DriversController {
 
   @Patch('me/device')
   @Roles(UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'تسجيل جهاز FCM للإشعارات' })
+  @ApiOperation({ summary: 'Register an FCM device for notifications' })
   @ApiCommonResponses()
   registerDevice(
     @GetCurrentUser('driverId') driverId: string,

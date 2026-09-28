@@ -1,8 +1,5 @@
 import { applyDecorators } from '@nestjs/common';
-import {
-  ApiQuery,
-  ApiQueryOptions,
-} from '@nestjs/swagger';
+import { ApiQuery, ApiQueryOptions } from '@nestjs/swagger';
 
 const paginationParams: ApiQueryOptions[] = [
   {
@@ -10,14 +7,14 @@ const paginationParams: ApiQueryOptions[] = [
     required: false,
     type: Number,
     example: 1,
-    description: 'رقم الصفحة',
+    description: 'Page number',
   },
   {
     name: 'limit',
     required: false,
     type: Number,
     example: 20,
-    description: 'عدد العناصر في الصفحة (ماكس 100)',
+    description: 'Number of items per page (max 100)',
   },
 ];
 

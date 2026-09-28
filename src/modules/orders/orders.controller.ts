@@ -39,7 +39,7 @@ import {
 } from '@common/swagger/api-responses.decorator';
 import { ApiPaginationQuery } from '@common/swagger/api-pagination.decorator';
 
-@ApiTags('الطلبات')
+@ApiTags('Orders')
 @ApiBearerAuth('JWT')
 @Controller('orders')
 export class OrdersController {
@@ -52,10 +52,11 @@ export class OrdersController {
   @Post()
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
   @ApiOperation({
-    summary: 'إنشاء طلب جديد',
-    description: 'إنشاء طلب شحن جديد مع بيانات المرسل والمستلم',
+    summary: 'Create a new order',
+    description:
+      'Create a new shipment order with sender and recipient details',
   })
-  @ApiSuccessResponse('تم إنشاء الطلب بنجاح', OrderResponseDto)
+  @ApiSuccessResponse('Order created successfully', OrderResponseDto)
   @ApiCommonResponses()
   create(
     @GetCurrentUser('tenantId') tenantId: string,
@@ -66,7 +67,7 @@ export class OrdersController {
 
   @Get()
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'قائمة الطلبات' })
+  @ApiOperation({ summary: 'List orders' })
   @ApiPaginationQuery([
     {
       name: 'status',
@@ -85,12 +86,12 @@ export class OrdersController {
     {
       name: 'search',
       required: false,
-      description: 'بحث برقم التتبع أو اسم العميل',
+      description: 'Search by tracking number or customer name',
     },
     { name: 'dateFrom', required: false, example: '2024-01-01' },
     { name: 'dateTo', required: false, example: '2024-12-31' },
   ])
-  @ApiSuccessResponse('قائمة الطلبات')
+  @ApiSuccessResponse('List of orders')
   @ApiCommonResponses()
   findAll(
     @GetCurrentUser('tenantId') tenantId: string,
@@ -101,9 +102,9 @@ export class OrdersController {
 
   @Get(':id')
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'تفاصيل طلب' })
-  @ApiParam({ name: 'id', description: 'معرف الطلب', example: 'uuid' })
-  @ApiSuccessResponse('تفاصيل الطلب')
+  @ApiOperation({ summary: 'Order details' })
+  @ApiParam({ name: 'id', description: 'Order ID', example: 'uuid' })
+  @ApiSuccessResponse('Order details')
   @ApiCommonResponses()
   findOne(
     @Param('id') id: string,
@@ -115,10 +116,10 @@ export class OrdersController {
   @Post(':id/assign')
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
   @ApiOperation({
-    summary: 'تعيين سائق للطلب',
-    description: 'تعيين سائق يدوياً للطلب',
+    summary: 'Assign a driver to the order',
+    description: 'Manually assign a driver to the order',
   })
-  @ApiParam({ name: 'id', description: 'معرف الطلب' })
+  @ApiParam({ name: 'id', description: 'Order ID' })
   @ApiCommonResponses()
   assignDriver(
     @Param('id') id: string,
@@ -132,8 +133,9 @@ export class OrdersController {
   @Post(':id/auto-assign')
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
   @ApiOperation({
-    summary: 'تعيين تلقائي',
-    description: 'اختيار أقرب سائق متاح تلقائياً باستخدام Haversine Algorithm',
+    summary: 'Auto-assign driver',
+    description:
+      'Automatically select the nearest available driver using the Haversine algorithm',
   })
   @ApiCommonResponses()
   autoAssign(
@@ -146,8 +148,8 @@ export class OrdersController {
   @Get(':id/assignment-preview')
   @Roles(UserRole.TENANT_ADMIN, UserRole.TENANT_STAFF)
   @ApiOperation({
-    summary: 'معاينة التعيين التلقائي',
-    description: 'عرض أقرب 3 سائقين بدون تعيين فعلي',
+    summary: 'Preview auto-assignment',
+    description: 'Show the 3 nearest drivers without assigning',
   })
   @ApiCommonResponses()
   previewAssignment(
@@ -159,7 +161,7 @@ export class OrdersController {
 
   @Patch(':id/cancel')
   @Roles(UserRole.TENANT_ADMIN)
-  @ApiOperation({ summary: 'إلغاء طلب' })
+  @ApiOperation({ summary: 'Cancel an order' })
   @ApiCommonResponses()
   cancel(
     @Param('id') id: string,
@@ -171,7 +173,7 @@ export class OrdersController {
 
   @Patch(':id/status')
   @Roles(UserRole.TENANT_STAFF)
-  @ApiOperation({ summary: 'تحديث حالة الطلب' })
+  @ApiOperation({ summary: 'Update order status' })
   @ApiCommonResponses()
   updateStatus(
     @Param('id') id: string,
@@ -186,8 +188,9 @@ export class OrdersController {
   @Roles(UserRole.TENANT_STAFF)
   @OtpThrottle()
   @ApiOperation({
-    summary: 'إرسال OTP للعميل',
-    description: 'إرسال رمز تحقق SMS للعميل لتأكيد التسليم',
+    summary: 'Send OTP to the customer',
+    description:
+      'Send an SMS verification code to the customer to confirm delivery',
   })
   @ApiCommonResponses()
   sendOtp(
@@ -203,8 +206,9 @@ export class OrdersController {
   @UseInterceptors(FileInterceptor('photo', multerConfig))
   @OtpThrottle()
   @ApiOperation({
-    summary: 'تأكيد التسليم بالـ OTP',
-    description: 'التحقق من رمز OTP وإتمام التسليم مع رفع صورة اختيارية',
+    summary: 'Confirm delivery with OTP',
+    description:
+      'Verify the OTP code and complete delivery, with an optional photo upload',
   })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -212,11 +216,15 @@ export class OrdersController {
       type: 'object',
       required: ['code'],
       properties: {
-        code: { type: 'string', example: '483920', description: 'رمز التحقق' },
+        code: {
+          type: 'string',
+          example: '483920',
+          description: 'Verification code',
+        },
         photo: {
           type: 'string',
           format: 'binary',
-          description: 'صورة التسليم (اختياري)',
+          description: 'Delivery photo (optional)',
         },
       },
     },
@@ -234,7 +242,7 @@ export class OrdersController {
 
   @Post('bulk-auto-assign')
   @Roles(UserRole.TENANT_ADMIN)
-  @ApiOperation({ summary: 'تعيين تلقائي لجميع الطلبات المعلقة' })
+  @ApiOperation({ summary: 'Auto-assign all pending orders' })
   @ApiCommonResponses()
   bulkAutoAssign(@GetCurrentUser('tenantId') tenantId: string) {
     return this.assignmentService.bulkAutoAssign(tenantId);
@@ -248,13 +256,14 @@ export class OrdersController {
     long: { ttl: 86400000, limit: 500 },
   })
   @ApiOperation({
-    summary: 'تتبع الشحنة',
-    description: 'endpoint عام للعميل النهائي لتتبع شحنته بدون تسجيل دخول',
+    summary: 'Track shipment',
+    description:
+      'Public endpoint for end customers to track their shipment without signing in',
   })
   @ApiParam({
     name: 'trackingCode',
     example: 'SHP-A3F92B1C',
-    description: 'رمز التتبع المرسل للعميل',
+    description: 'Tracking code sent to the customer',
   })
   @ApiCommonResponses()
   track(@Param('trackingCode') trackingCode: string) {

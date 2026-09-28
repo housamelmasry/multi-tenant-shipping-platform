@@ -31,7 +31,7 @@ export class CreateDriverDto {
   @IsEmail()
   email?: string;
 
-  @ApiProperty({ example: '0000000001', description: 'رقم الهوية الوطنية' })
+  @ApiProperty({ example: '0000000001', description: 'National ID' })
   @IsString()
   nationalId: string;
 

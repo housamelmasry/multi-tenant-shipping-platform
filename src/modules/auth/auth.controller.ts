@@ -12,7 +12,7 @@ import {
   ApiCommonResponses,
 } from '@common/swagger/api-responses.decorator';
 
-@ApiTags('المصادقة')
+@ApiTags('Authentication')
 @Controller('auth')
 @UseGuards(JwtAuthGuard)
 export class AuthController {
@@ -22,11 +22,11 @@ export class AuthController {
   @Public()
   @AuthThrottle()
   @ApiOperation({
-    summary: 'تسجيل الدخول',
-    description: 'يرجع JWT tokens للوصول إلى الـ API',
+    summary: 'Sign in',
+    description: 'Returns JWT tokens for accessing the API',
   })
   @ApiBody({ type: LoginDto })
-  @ApiSuccessResponse('تم تسجيل الدخول بنجاح')
+  @ApiSuccessResponse('Signed in successfully')
   @ApiCommonResponses()
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
@@ -34,7 +34,7 @@ export class AuthController {
 
   @Post('refresh')
   @Public()
-  @ApiOperation({ summary: 'تجديد الـ Access Token' })
+  @ApiOperation({ summary: 'Refresh the access token' })
   @ApiBearerAuth('JWT')
   @ApiCommonResponses()
   refresh(@Body() dto: RefreshTokenDto) {
@@ -42,9 +42,9 @@ export class AuthController {
   }
 
   @Get('me')
-  @ApiOperation({ summary: 'بيانات المستخدم الحالي' })
+  @ApiOperation({ summary: 'Current user details' })
   @ApiBearerAuth('JWT')
-  @ApiSuccessResponse('بيانات المستخدم')
+  @ApiSuccessResponse('User details')
   @ApiCommonResponses()
   me(@GetCurrentUser('id') userId: string) {
     return this.authService.me(userId);

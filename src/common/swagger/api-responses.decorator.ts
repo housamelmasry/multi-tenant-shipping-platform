@@ -1,9 +1,13 @@
 import { applyDecorators, Type } from '@nestjs/common';
 import {
-  ApiOkResponse, ApiCreatedResponse,
-  ApiBadRequestResponse, ApiUnauthorizedResponse,
-  ApiForbiddenResponse, ApiNotFoundResponse,
-  ApiConflictResponse, ApiTooManyRequestsResponse,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiConflictResponse,
+  ApiTooManyRequestsResponse,
   ApiInternalServerErrorResponse,
   getSchemaPath,
 } from '@nestjs/swagger';
@@ -61,41 +65,41 @@ export function ApiCreatedResponseDoc(
 export function ApiCommonResponses() {
   return applyDecorators(
     ApiBadRequestResponse({
-      description: 'خطأ في البيانات المرسلة',
+      description: 'Invalid request data',
       schema: {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'رمز التحقق غير صحيح' },
+          message: { type: 'string', example: 'Invalid verification code' },
           statusCode: { type: 'number', example: 400 },
         },
       },
     }),
     ApiUnauthorizedResponse({
-      description: 'غير مصرح',
+      description: 'Unauthorized',
       schema: {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: false },
-          message: { type: 'string', example: 'يرجى تسجيل الدخول' },
+          message: { type: 'string', example: 'Please sign in first' },
           statusCode: { type: 'number', example: 401 },
         },
       },
     }),
     ApiForbiddenResponse({
-      description: 'صلاحية غير كافية',
+      description: 'Insufficient permissions',
     }),
     ApiNotFoundResponse({
-      description: 'الموارد غير موجود',
+      description: 'Resource not found',
     }),
     ApiConflictResponse({
-      description: 'تعارض في البيانات',
+      description: 'Data conflict',
     }),
     ApiTooManyRequestsResponse({
-      description: 'تجاوزت حد الطلبات المسموح',
+      description: 'Rate limit exceeded',
     }),
     ApiInternalServerErrorResponse({
-      description: 'خطأ داخلي في الخادم',
+      description: 'Internal server error',
     }),
   );
 }

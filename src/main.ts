@@ -46,18 +46,18 @@ function setupSwagger(app: any) {
     .setTitle('Shipping Management API')
     .setDescription(
       `
-## نظام إدارة الشحن — API Documentation
+## Shipping Management API — Documentation
 
-### المصادقة
-- **JWT Bearer**: للمستخدمين والسائقين \`Authorization: Bearer <token>\`
-- **API Key**: للشركات الخارجية \`X-API-Key: <key>\`
+### Authentication
+- **JWT Bearer**: for users and drivers \`Authorization: Bearer <token>\`
+- **API Key**: for external companies \`X-API-Key: <key>\`
 
-### الأدوار
-| الدور | الصلاحيات |
+### Roles
+| Role | Permissions |
 |-------|-----------|
-| \`SUPER_ADMIN\` | كل الصلاحيات |
-| \`TENANT_ADMIN\` | إدارة شركته |
-| \`TENANT_STAFF\` | السائق |
+| \`SUPER_ADMIN\` | All permissions |
+| \`TENANT_ADMIN\` | Manages their company |
+| \`TENANT_STAFF\` | Driver |
 
 ### Response Format
 \`\`\`json
@@ -80,7 +80,7 @@ function setupSwagger(app: any) {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'أدخل الـ JWT token',
+        description: 'Enter the JWT token',
       },
       'JWT',
     )
@@ -89,7 +89,7 @@ function setupSwagger(app: any) {
         type: 'apiKey',
         in: 'header',
         name: 'X-API-Key',
-        description: 'API Key للشركات الخارجية',
+        description: 'API Key for external companies',
       },
       'API-Key',
     )

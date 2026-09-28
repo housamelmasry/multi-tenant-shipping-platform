@@ -1,10 +1,14 @@
 import {
-  Controller, Get, Post, Patch, Delete,
-  Body, Param, Query,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
 } from '@nestjs/common';
-import {
-  ApiTags, ApiOperation, ApiBearerAuth, ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { WebhooksService } from './webhooks.service';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { Roles } from '@common/decorators/roles.decorator';
@@ -12,7 +16,7 @@ import { GetCurrentUser } from '@common/decorators/current-user.decorator';
 import { UserRole } from '@common/enums';
 import { ApiCommonResponses } from '@common/swagger/api-responses.decorator';
 
-@ApiTags('الـ Webhooks')
+@ApiTags('Webhooks')
 @ApiBearerAuth('JWT')
 @Controller('webhooks')
 @Roles(UserRole.TENANT_ADMIN)
@@ -21,20 +25,20 @@ export class WebhooksController {
 
   @Post()
   @ApiOperation({
-    summary: 'إضافة Webhook',
-    description: `إضافة endpoint لاستقبال إشعارات الأحداث
+    summary: 'Add a webhook',
+    description: `Add an endpoint to receive event notifications
 
-**الأحداث المتاحة:**
-- \`order.created\` — إنشاء طلب جديد
-- \`order.assigned\` — تعيين سائق
-- \`order.picked_up\` — استلام الشحنة
-- \`order.in_transit\` — في الطريق
-- \`order.delivered\` — تم التسليم ✅
-- \`order.failed\` — فشل التسليم
-- \`order.cancelled\` — إلغاء
-- \`order.returned\` — مرتجع
+**Available events:**
+- \`order.created\` — A new order was created
+- \`order.assigned\` — A driver was assigned
+- \`order.picked_up\` — The shipment was picked up
+- \`order.in_transit\` — In transit
+- \`order.delivered\` — Delivered ✅
+- \`order.failed\` — Delivery failed
+- \`order.cancelled\` — Cancelled
+- \`order.returned\` — Returned
 
-**التحقق من الأمان:**
+**Signature verification:**
 \`\`\`
 X-Webhook-Signature: sha256=<hmac>
 X-Webhook-Event: order.delivered
@@ -62,14 +66,14 @@ X-Webhook-Timestamp: 1704067200000
   }
 
   @Get()
-  @ApiOperation({ summary: 'قائمة الـ Webhooks' })
+  @ApiOperation({ summary: 'List webhooks' })
   @ApiCommonResponses()
   findAll(@GetCurrentUser('tenantId') tenantId: string) {
     return this.webhooksService.findAll(tenantId);
   }
 
   @Patch(':id/toggle')
-  @ApiOperation({ summary: 'تفعيل/تعطيل Webhook' })
+  @ApiOperation({ summary: 'Enable/disable a webhook' })
   @ApiCommonResponses()
   toggleStatus(
     @Param('id') id: string,
@@ -79,7 +83,7 @@ X-Webhook-Timestamp: 1704067200000
   }
 
   @Delete(':id')
-  @ApiOperation({ summary: 'حذف Webhook' })
+  @ApiOperation({ summary: 'Delete a webhook' })
   @ApiCommonResponses()
   delete(
     @Param('id') id: string,
@@ -89,7 +93,7 @@ X-Webhook-Timestamp: 1704067200000
   }
 
   @Post(':id/rotate-secret')
-  @ApiOperation({ summary: 'تغيير Secret الـ Webhook' })
+  @ApiOperation({ summary: 'Rotate the webhook secret' })
   @ApiCommonResponses()
   rotateSecret(
     @Param('id') id: string,
@@ -99,7 +103,7 @@ X-Webhook-Timestamp: 1704067200000
   }
 
   @Get('logs')
-  @ApiOperation({ summary: 'سجل محاولات الـ Webhook' })
+  @ApiOperation({ summary: 'Webhook delivery log' })
   @ApiCommonResponses()
   getLogs(
     @GetCurrentUser('tenantId') tenantId: string,
@@ -109,7 +113,7 @@ X-Webhook-Timestamp: 1704067200000
   }
 
   @Get('logs/:logId')
-  @ApiOperation({ summary: 'تفاصيل محاولة Webhook' })
+  @ApiOperation({ summary: 'Webhook delivery details' })
   @ApiCommonResponses()
   getLogDetail(
     @Param('logId') logId: string,
@@ -119,7 +123,7 @@ X-Webhook-Timestamp: 1704067200000
   }
 
   @Post('logs/:logId/retry')
-  @ApiOperation({ summary: 'إعادة محاولة Webhook فاشل' })
+  @ApiOperation({ summary: 'Retry a failed webhook' })
   @ApiCommonResponses()
   retryLog(
     @Param('logId') logId: string,

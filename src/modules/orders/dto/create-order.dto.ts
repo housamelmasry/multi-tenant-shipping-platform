@@ -28,24 +28,24 @@ class AddressDto {
   @IsString()
   address: string;
 
-  @ApiPropertyOptional({ example: 24.7136, description: 'خط العرض' })
+  @ApiPropertyOptional({ example: 24.7136, description: 'Latitude' })
   @IsOptional()
   @IsLatitude()
   lat?: number;
 
-  @ApiPropertyOptional({ example: 46.6753, description: 'خط الطول' })
+  @ApiPropertyOptional({ example: 46.6753, description: 'Longitude' })
   @IsOptional()
   @IsLongitude()
   lng?: number;
 }
 
 export class CreateOrderDto {
-  @ApiProperty({ type: AddressDto, description: 'بيانات المرسل' })
+  @ApiProperty({ type: AddressDto, description: 'Sender details' })
   @ValidateNested()
   @Type(() => AddressDto)
   sender: AddressDto;
 
-  @ApiProperty({ type: AddressDto, description: 'بيانات المستلم' })
+  @ApiProperty({ type: AddressDto, description: 'Recipient details' })
   @ValidateNested()
   @Type(() => AddressDto)
   recipient: AddressDto;
@@ -55,7 +55,7 @@ export class CreateOrderDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ example: 2.5, description: 'الوزن بالكيلوجرام' })
+  @ApiPropertyOptional({ example: 2.5, description: 'Weight in kilograms' })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -63,7 +63,7 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({
     example: 150.0,
-    description: 'مبلغ الدفع عند الاستلام',
+    description: 'Amount to collect on delivery',
   })
   @IsOptional()
   @IsNumber()
@@ -77,7 +77,7 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({
     example: 'ORD-12345',
-    description: 'رقم الطلب في نظام الشركة',
+    description: 'Order reference in the company system',
   })
   @IsOptional()
   @IsString()
