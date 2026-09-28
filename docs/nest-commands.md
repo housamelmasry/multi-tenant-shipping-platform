@@ -1,23 +1,23 @@
-# إنشاء وحدة الإشعارات (Notifications Module)
+# Create the Notifications Module
 
 ```bash
-# 1. إنشاء الموديول
+# 1. Generate the module
 nest g module modules/notifications --no-spec
 
-# 2. إنشاء الكونترولر
+# 2. Generate the controller
 nest g controller modules/notifications --no-spec
 
-# 3. إنشاء الخدمة
+# 3. Generate the service
 nest g service modules/notifications --no-spec
 
-# 4. إنشاء DTOs
+# 4. Generate the DTOs
 nest g class modules/notifications/dto/register-device.dto --no-spec
 nest g class modules/notifications/dto/create-notification.dto --no-spec
 nest g class modules/notifications/dto/query-notifications.dto --no-spec
 ```
 
-## بعد الإنشاء
+## After Generation
 
-- تسجيل `NotificationsModule` في `app.module.ts` يتم تلقائياً
-- إضافة مسار `PATCH /drivers/me/device` في `DriversController` لتسجيل FCM token
-- إنشاء جدول `notifications` مسبقاً في Prisma schema (تم)
+- `NotificationsModule` is registered automatically in `app.module.ts`.
+- Add the `PATCH /drivers/me/device` route to `DriversController` to register the FCM token.
+- The `notifications` table has already been added to the Prisma schema.
