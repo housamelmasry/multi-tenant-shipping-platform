@@ -26,6 +26,8 @@ import appConfig from './config/app.config';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES } from './i18n/i18n.constants';
 import type { SupportedLanguage } from './i18n/i18n.constants';
 import { I18nHelperModule } from './i18n/i18n.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 export { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES };
 export type { SupportedLanguage };
@@ -121,10 +123,13 @@ export type { SupportedLanguage };
     PdplModule,
   ],
   providers: [
+    AppService,
+    LanguageResolver,
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
+  controllers: [AppController],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {

@@ -1,8 +1,14 @@
-import { Module, Global } from '@nestjs/common';
+import { Module, Global, OnModuleDestroy } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 export const REDIS_CLIENT = 'REDIS_CLIENT';
+
+class ManagedRedisClient extends Redis implements OnModuleDestroy {
+  async onModuleDestroy() {
+    await this.quit();
+  }
+}
 
 @Global()
 @Module({
@@ -12,7 +18,7 @@ export const REDIS_CLIENT = 'REDIS_CLIENT';
       provide: REDIS_CLIENT,
       inject: [ConfigService],
       useFactory: (config: ConfigService) =>
-        new Redis({
+        new ManagedRedisClient({
           host: config.get('REDIS_HOST', 'localhost'),
           port: config.get('REDIS_PORT', 6379),
         }),
